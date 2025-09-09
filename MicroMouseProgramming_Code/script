@@ -1,11 +1,11 @@
-config load "C:\Users\justi\OneDrive\Documents\MATLAB\MicroMouseTemplate\MicroMouseProgramming_Code\MicroMouseProgramming.ioc"
+config load "c:\Users\JesseJabezArendse\OneDrive\Documents\MATLAB\MicroMouseTemplate\MicroMouseProgramming_Code\MicroMouseProgramming.ioc"
 project toolchain STM32CubeIDE
 
 SetStructure Advanced
 
-project setCustomFWPath "C:\Users\justi\STM32Cube\Repository\STM32Cube_FW_L4_V1.18.1"
+project setCustomFWPath "c:\Users\JesseJabezArendse\STM32Cube\Repository\STM32Cube_FW_L4_V1.18.1"
 
-config save C:\Users\justi\OneDrive\Documents\MATLAB\MicroMouseTemplate\MicroMouseProgramming_Code\MicroMouseProgramming.ioc
+config save c:\Users\JesseJabezArendse\OneDrive\Documents\MATLAB\MicroMouseTemplate\MicroMouseProgramming_Code\MicroMouseProgramming.ioc
 
 
 exit wait
