@@ -32,7 +32,7 @@
 #ifndef COMPILED_BY_SIMULINK
 #define IMU_ICM42605
 // #define IMU_MPU6050
-#define IMU_DYNAMIC_FSR
+// #define IMU_DYNAMIC_FSR
 #endif // COMPILED_BY_SIMULINK
 
 

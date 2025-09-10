@@ -319,7 +319,15 @@ static void initICM42605(uint8_t Ascale, uint8_t Gscale, uint8_t AODR, uint8_t G
   WriteByte(ICM42605_ADDRESS, ICM42605_REG_BANK_SEL, temp & ~(0x07) ); // select Bank 0
 }
 
-void refreshIMUValues() {  
+extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim4;
+void refreshIMUValues() {
+    // initIMU();
+    HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+    HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
+    HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_4);
+
     IMU_Accel[0] = signNumber16(ReadMem(ICM42605_ADDRESS, ICM42605_ACCEL_DATA_X1)) * IMU_GRAVITATIONAL_ACCELERATION / accelDivisor;  // Convert to m/s^2
     IMU_Accel[1] = signNumber16(ReadMem(ICM42605_ADDRESS, ICM42605_ACCEL_DATA_Y1)) * IMU_GRAVITATIONAL_ACCELERATION / accelDivisor; 
     IMU_Accel[2] = signNumber16(ReadMem(ICM42605_ADDRESS, ICM42605_ACCEL_DATA_Z1)) * IMU_GRAVITATIONAL_ACCELERATION / accelDivisor; 
@@ -330,6 +338,10 @@ void refreshIMUValues() {
 
     IMU_Temp = ((int16_t)ReadMem(ICM42605_ADDRESS, ICM42605_TEMP_DATA1)) / 132.48f + 25.0f;  // Convert to °C
 
+    HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
+    HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
     #ifdef IMU_DYNAMIC_FSR
     calibrateIMU();
     #endif
@@ -337,7 +349,7 @@ void refreshIMUValues() {
 
 void initIMU() {
   // resetICM42605(); // Reset the ICM42605
-  initICM42605(AFS_2G, GFS_2000DPS, AODR_1000Hz, GODR_1000Hz); // Initialize with ±2g and ±125°/s
+  initICM42605(AFS_2G, GFS_2000DPS, AODR_100Hz, GODR_100Hz); // Initialize with ±2g and ±125°/s
 }
 
 void calibrateIMU() {
