@@ -75,7 +75,8 @@ DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
- void MX_NVIC_Init(void); 
+ void MX_NVIC_Init(void);
+ 
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -105,6 +106,12 @@ bool LED2 = 0;
 
 // ADCs
 extern uint16_t ADCs[5];
+
+extern uint16_t V_BATT;
+extern uint16_t V_PHOTO_DOWN_LS;
+extern uint16_t V_PHOTO_DOWN_RS;
+extern uint16_t V_PHOTO_MOT_LS;
+extern uint16_t V_PHOTO_MOT_RS;
 
 extern int8_t MOTOR_LS;
 extern int8_t MOTOR_RS;
@@ -289,15 +296,38 @@ extern uint8_t active_usb_buffer;
 extern uint8_t readyToLog;
 extern uint32_t log_flash_write_addr;
 uint8_t log_time_counter = 0;
- 
+static uint16_t log_sample_counter = 0;  // Wraps at 65535
+
+// Global header configuration - modify these values as needed
+#ifndef COMPILED_BY_SIMULINK
+uint8_t LOG_VERSION = 1;
+uint8_t LOG_SAMPLING_RATE_HZ = 25;
+uint8_t LOG_EXPECTED_MINUTES = 5;
+uint8_t LOG_STUDENT_NUMBER[9] = "ABCDEF123";  // 9 characters
+#endif
+
+// Metadata header written once at start of log
+typedef struct __attribute__((packed)) {
+    uint8_t version;
+    uint8_t sampling_rate_hz;
+    uint8_t expected_minutes;
+    uint8_t student_number[9];
+    uint8_t uuid[12];
+} MicroMouseLogHeader_t;
+
 typedef struct __attribute__((packed)) {
     uint8_t state;
     uint8_t LEDs[3];
     int8_t Motor_Left;
     int8_t Motor_Right;
+    uint16_t sample_count;
     uint16_t Distance_Left;
     uint16_t Distance_Centre;
     uint16_t Distance_Right;
+    uint16_t PHOTO_DOWN_LS;
+    uint16_t PHOTO_DOWN_RS;
+    uint16_t PHOTO_MOT_LS;
+    uint16_t PHOTO_MOT_RS;
     uint16_t IMU_Accel_X;
     uint16_t IMU_Accel_Y;
     uint16_t IMU_Accel_Z;
@@ -339,10 +369,21 @@ void refreshLoggedData() {
     if (!logging_enabled) return;
 
     if (first_buffer) {
-        // Place UID only at the start of the very first buffer
+        // Write metadata header at the start of the very first buffer
+        MicroMouseLogHeader_t header;
         uint8_t *uid_ptr = (uint8_t*)0x1FFF7590;
-        memcpy(USB_storage_buffer[active_usb_buffer], uid_ptr, 12);
-        usb_storage_buffer_index[active_usb_buffer] = 12;
+        
+        // Populate header from global variables
+        header.version = LOG_VERSION;
+        header.sampling_rate_hz = LOG_SAMPLING_RATE_HZ;
+        header.expected_minutes = LOG_EXPECTED_MINUTES;
+        memcpy(header.student_number, LOG_STUDENT_NUMBER, 9);
+        memcpy(header.uuid, uid_ptr, 12);
+        
+        // Write header to buffer
+        memcpy(USB_storage_buffer[active_usb_buffer], &header, sizeof(MicroMouseLogHeader_t));
+        usb_storage_buffer_index[active_usb_buffer] = sizeof(MicroMouseLogHeader_t);
+        
         first_buffer = false;
 
         FLASH_EraseInitTypeDef EraseInitStruct;
@@ -362,11 +403,16 @@ void refreshLoggedData() {
     log.LEDs[0] = LED[0];
     log.LEDs[1] = LED[1];
     log.LEDs[2] = LED[2];
+    log.Motor_Left = MOTOR_LS;
+    log.Motor_Right = MOTOR_RS;
+    log.sample_count = log_sample_counter++;  // Auto-wraps at 65535
     log.Distance_Left = (uint16_t)(TOF_left_result.Distance > 4095 ? 4095 : TOF_left_result.Distance);
     log.Distance_Centre = (uint16_t)(TOF_centre_result.Distance > 4095 ? 4095 : TOF_centre_result.Distance);
     log.Distance_Right = (uint16_t)(TOF_right_result.Distance > 4095 ? 4095 : TOF_right_result.Distance);
-    log.Motor_Left = MOTOR_LS;
-    log.Motor_Right = MOTOR_RS;
+    log.PHOTO_DOWN_LS = V_PHOTO_DOWN_LS;
+    log.PHOTO_DOWN_RS = V_PHOTO_DOWN_RS;
+    log.PHOTO_MOT_LS = V_PHOTO_MOT_LS;
+    log.PHOTO_MOT_RS = V_PHOTO_MOT_RS;
     // Add IMU accel x, accel y, and gyro z
     log.IMU_Accel_X = (uint16_t)(IMU_Accel[0] * 1000.0f);
     log.IMU_Accel_Y = (uint16_t)(IMU_Accel[1] * 1000.0f);
@@ -589,7 +635,8 @@ void SystemClock_Config(void)
   * @brief NVIC Configuration.
   * @retval None
   */
- void MX_NVIC_Init(void) 
+ void MX_NVIC_Init(void)
+ 
 {
   /* FLASH_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(FLASH_IRQn, 0, 0);
