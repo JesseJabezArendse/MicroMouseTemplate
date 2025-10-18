@@ -16,6 +16,10 @@
 #define FLASH_PAGE_SIZE 0x800
 #define TOTAL_USB_DEVICE_SIZE   ( STORAGE_BLK_NBR * STORAGE_BLK_SIZ )
 
+#define GAP_PAGES 2  // 3 pages (6KB) gap between code and log for safety
+#define FLASH_END 0x08080000  // 512KB flash end
+#define FLASH_MID 0x08040000  // Start scanning from middle
+
 // Utility: Get flash page start address for STM32L476VE (FLASH_PAGE_SIZE = 2048)
 #define STM32L476_FLASH_BASE 0x08000000
 #define STM32L476_FLASH_PAGE_SIZE 2048
@@ -66,7 +70,6 @@ float Flash_Read_NUM(uint32_t StartSectorAddress);
 #endif
 
 #define USB_BUFFER_SIZE (2*1024)
-#define LOG_FLASH_START_ADDR 0x08040000
 #define LOG_FLASH_PAGE_SIZE  0x800
 
 #define USB_PREFORMATED (((const uint8_t*)USB_FLASH_START_ADDRESS))
@@ -79,5 +82,11 @@ uint32_t get_preformatted_data_size(void);
 
 // Initialize preformatted flash and update UID
 void initPreFormatedFlash(void);
+
+// Dynamically find where to start logging (first page after application code)
+uint32_t detectLogStartAddress(void);
+
+// Calculate optimal sampling rate based on available flash and expected duration
+uint8_t calculateOptimalSamplingRate(uint32_t log_start_addr, uint8_t expected_minutes, uint16_t log_struct_size);
 
 #endif /* PREFORMATTED_FLASH_H */

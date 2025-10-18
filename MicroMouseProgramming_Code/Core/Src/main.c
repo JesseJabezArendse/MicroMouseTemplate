@@ -75,8 +75,7 @@ DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
- void MX_NVIC_Init(void);
- 
+ void MX_NVIC_Init(void); 
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -138,6 +137,22 @@ extern uint8_t batteryLife;
 extern int16_t Vbattery, Vshunt, Current, config, Power;
 extern float miliwattAVG,miliWattTime,totalPowerUsed;
 extern uint8_t STATE;
+
+extern uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
+extern uint16_t usb_storage_buffer_index[2];
+extern uint8_t active_usb_buffer;
+extern uint8_t readyToLog;
+extern uint32_t log_flash_write_addr;
+uint8_t log_time_counter = 0;
+ uint16_t log_sample_counter = 0;  // Wraps at 65535
+ 
+
+// Global header configuration - modify these values as needed
+uint8_t LOG_VERSION = 1;
+uint8_t LOG_SAMPLING_RATE_HZ = 25;  // Will be dynamically calculated in initLogs()
+uint8_t EXPECTED_MINUTES = 5;
+uint8_t STUDENT_NUMBER[9] = "ABCDEF123";  // 9 characters
+
 // functions
 
 void configureTimer(float desired_frequency, TIM_TypeDef* tim) {
@@ -288,24 +303,6 @@ void restartI2C(){
 }
 // Logging
 
-
-
-extern uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
-extern uint16_t usb_storage_buffer_index[2];
-extern uint8_t active_usb_buffer;
-extern uint8_t readyToLog;
-extern uint32_t log_flash_write_addr;
-uint8_t log_time_counter = 0;
-static uint16_t log_sample_counter = 0;  // Wraps at 65535
-
-// Global header configuration - modify these values as needed
-#ifndef COMPILED_BY_SIMULINK
-uint8_t LOG_VERSION = 1;
-uint8_t LOG_SAMPLING_RATE_HZ = 25;
-uint8_t LOG_EXPECTED_MINUTES = 5;
-uint8_t LOG_STUDENT_NUMBER[9] = "ABCDEF123";  // 9 characters
-#endif
-
 // Metadata header written once at start of log
 typedef struct __attribute__((packed)) {
     uint8_t version;
@@ -337,8 +334,19 @@ typedef struct __attribute__((packed)) {
 } MicroMouseLog_t;
 
 void initLogs() {
-    // Configure TIM7 for 30Hz
-    configureTimer(25, TIM7);
+    // Dynamically determine where to start logging (first page after application code)
+    log_flash_write_addr = detectLogStartAddress();
+    
+    // Calculate optimal sampling rate based on available flash and expected duration
+    uint8_t optimal_rate = calculateOptimalSamplingRate(log_flash_write_addr, 
+                                                         EXPECTED_MINUTES, 
+                                                         sizeof(MicroMouseLog_t));
+    
+    // Update the global sampling rate (used in header and Simulink timing)
+    LOG_SAMPLING_RATE_HZ = optimal_rate;
+    
+    // Configure TIM7 with calculated rate
+    configureTimer(optimal_rate, TIM7);
     HAL_TIM_Base_Start_IT(&htim7);
     readyToLog = false;
     #ifndef COMPILED_BY_SIMULINK 
@@ -352,8 +360,11 @@ bool first_buffer = true;
 bool logging_enabled = false;
 void refreshLoggedData() {
       #ifdef COMPILED_BY_SIMULINK
+      // Simulink timer runs at 100Hz (10ms ticks), so divide by sampling rate
+      // Example: 100/25 = 4 ticks for 25Hz sampling (every 40ms)
       log_time_counter++;
-      if (log_time_counter >= 100/25) { // 1ms/Hz
+      uint8_t ticks_per_sample = (LOG_SAMPLING_RATE_HZ > 0) ? (100 / LOG_SAMPLING_RATE_HZ) : 4;
+      if (log_time_counter >= ticks_per_sample) {
         readyToLog = true;
         log_time_counter = 0;
       } 
@@ -369,6 +380,21 @@ void refreshLoggedData() {
     if (!logging_enabled) return;
 
     if (first_buffer) {
+        // Dynamically determine where to start logging (first page after application code)
+        log_flash_write_addr = detectLogStartAddress();
+        
+        // Calculate optimal sampling rate based on available flash and expected duration
+        uint8_t optimal_rate = calculateOptimalSamplingRate(log_flash_write_addr, 
+                                                            EXPECTED_MINUTES, 
+                                                            sizeof(MicroMouseLog_t));
+        
+        // Update the global sampling rate (used in header and Simulink timing)
+        LOG_SAMPLING_RATE_HZ = optimal_rate;
+        
+        // Configure TIM7 with calculated rate
+        configureTimer(optimal_rate, TIM7);
+        HAL_TIM_Base_Start_IT(&htim7);
+
         // Write metadata header at the start of the very first buffer
         MicroMouseLogHeader_t header;
         uint8_t *uid_ptr = (uint8_t*)0x1FFF7590;
@@ -376,8 +402,8 @@ void refreshLoggedData() {
         // Populate header from global variables
         header.version = LOG_VERSION;
         header.sampling_rate_hz = LOG_SAMPLING_RATE_HZ;
-        header.expected_minutes = LOG_EXPECTED_MINUTES;
-        memcpy(header.student_number, LOG_STUDENT_NUMBER, 9);
+        header.expected_minutes = EXPECTED_MINUTES;
+        memcpy(header.student_number, STUDENT_NUMBER, 9);
         memcpy(header.uuid, uid_ptr, 12);
         
         // Write header to buffer
@@ -643,8 +669,7 @@ void SystemClock_Config(void)
   * @brief NVIC Configuration.
   * @retval None
   */
- void MX_NVIC_Init(void)
- 
+ void MX_NVIC_Init(void) 
 {
   /* FLASH_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(FLASH_IRQn, 0, 0);

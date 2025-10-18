@@ -9,6 +9,10 @@
             "executable": "${workspaceFolder}/MicroMouse_Deploy.elf",
             "device": "STM32L476VETx",
             "svdFile": "",
+            "liveWatch": {
+                "enabled": true,
+                "samplesPerSecond": 20
+            },
             "cpu": "cortex-m4",
             "preLaunchTask": "",
             "postRestartCommands": [],

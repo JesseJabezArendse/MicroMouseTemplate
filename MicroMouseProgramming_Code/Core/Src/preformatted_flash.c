@@ -12,7 +12,7 @@ uint8_t STATE = 1;
 __attribute__((aligned(8))) uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
 uint16_t usb_storage_buffer_index[2] = {0, 0};
 uint8_t active_usb_buffer = 0;
-uint32_t log_flash_write_addr = LOG_FLASH_START_ADDR;
+uint32_t log_flash_write_addr = 0;  // Will be set dynamically by detectLogStartAddress()
 uint8_t readyToLog;
 
 uint32_t GetPage(uint32_t Address)
@@ -25,6 +25,78 @@ uint32_t GetPage(uint32_t Address)
             return page_start;
     }
     return 0;
+}
+
+uint32_t detectLogStartAddress(void)
+{
+    // Dynamically find where to start logging by finding first page after application code
+    // Strategy: Scan backwards from middle of flash to find last non-0xFF page (end of code)
+    
+    uint32_t scan_addr = FLASH_MID - STM32L476_FLASH_PAGE_SIZE;  // Start just before middle
+    uint32_t last_code_page = STM32L476_FLASH_BASE;
+    
+    // Scan backwards from middle to find first non-0xFF page (this is end of application code)
+    while (scan_addr > STM32L476_FLASH_BASE) {
+        // Check if this page has any non-0xFF data
+        uint8_t *page_ptr = (uint8_t*)scan_addr;
+        uint32_t non_ff_count = 0;
+        
+        for (uint32_t i = 0; i < STM32L476_FLASH_PAGE_SIZE; i++) {
+            if (page_ptr[i] != 0xFF) {
+                non_ff_count++;
+                break;  // Found at least one non-0xFF byte, that's enough
+            }
+        }
+        
+        if (non_ff_count > 0) {
+            // Found non-0xFF page - this is the last page of application code
+            last_code_page = scan_addr;
+            break;
+        }
+        
+        scan_addr -= STM32L476_FLASH_PAGE_SIZE;
+    }
+    
+    // Log starts GAP_PAGES after the last code page (already aligned to 2KB)
+    uint32_t log_start = last_code_page + ((GAP_PAGES + 1) * STM32L476_FLASH_PAGE_SIZE);
+    
+    // Ensure we don't go beyond flash and maintain minimum spacing
+    if (log_start >= FLASH_END || log_start < last_code_page) {
+        log_start = FLASH_MID;  // Fallback to middle
+    }
+    
+    return log_start;
+}
+
+uint8_t calculateOptimalSamplingRate(uint32_t log_start_addr, uint8_t expected_minutes, uint16_t log_struct_size)
+{
+    // Calculate maximum sampling rate based on available flash and expected duration
+    #define MAX_SAMPLING_RATE 100  // Hz - maximum allowed
+    #define FLASH_END 0x08080000
+    
+    // Calculate available flash space for logging
+    if (log_start_addr >= FLASH_END || expected_minutes == 0) {
+        return 10;  // Fallback to 10Hz if invalid parameters
+    }
+    
+    uint32_t available_flash = FLASH_END - log_start_addr;
+    uint32_t max_samples = available_flash / log_struct_size;
+    uint32_t expected_seconds = expected_minutes * 60;
+    
+    // Calculate optimal sampling rate (samples per second)
+    uint32_t optimal_rate = max_samples / expected_seconds;
+    
+    // Cap at maximum rate
+    if (optimal_rate > MAX_SAMPLING_RATE) {
+        optimal_rate = MAX_SAMPLING_RATE;
+    }
+    
+    // Ensure minimum rate of 1Hz
+    if (optimal_rate < 1) {
+        optimal_rate = 1;
+    }
+    
+    return (uint8_t)optimal_rate;
 }
 
 uint8_t bytes_temp[4];
@@ -58,40 +130,38 @@ uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint8_t *Data, uint32_t num
     uint32_t StartPage = GetPage(StartPageAddress);
     uint32_t EndPageAddress = StartPageAddress + numBytes;
     uint32_t EndPage = GetPage(EndPageAddress);
+    
+    // Disable instruction cache for flash operations
+    __HAL_FLASH_INSTRUCTION_CACHE_DISABLE();
+    __HAL_FLASH_DATA_CACHE_DISABLE();
+    
     HAL_FLASH_Unlock();
     
-    // Use fast programming for full 2K pages (much faster than doubleword)
-    if (numBytes == STM32L476_FLASH_PAGE_SIZE && (StartPageAddress % STM32L476_FLASH_PAGE_SIZE) == 0)
+    // Use doubleword programming (works on any bank, including executing bank)
+    // Fast programming only works on non-executing bank, so we use doubleword for reliability
+    for (uint32_t i = 0; i < numBytes; i += 8)
     {
-        // Fast programming: writes in 256-byte rows (8 rows = 2KB page)
-        // Note: Flash page must be erased first (or already blank)
-        for (uint32_t row = 0; row < 8; row++)
+        uint64_t data64 = 0;
+        memcpy(&data64, &Data[i], 8);
+        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, StartPageAddress + i, data64) != HAL_OK)
         {
-            uint32_t row_addr = StartPageAddress + (row * 256);
-            uint32_t row_data = (uint32_t)(Data + (row * 256));
-            if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_FAST, row_addr, row_data) != HAL_OK)
-            {
-                HAL_FLASH_Lock();
-                return HAL_FLASH_GetError();
-            }
-        }
-    }
-    else
-    {
-        // Fall back to doubleword programming for partial pages
-        for (uint32_t i = 0; i < numBytes; i += 8)
-        {
-            uint64_t data64 = 0;
-            memcpy(&data64, &Data[i], 8);
-            if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, StartPageAddress + i, data64) != HAL_OK)
-            {
-                HAL_FLASH_Lock();
-                return HAL_FLASH_GetError();
-            }
+            HAL_FLASH_Lock();
+            __HAL_FLASH_INSTRUCTION_CACHE_RESET();
+            __HAL_FLASH_DATA_CACHE_RESET();
+            __HAL_FLASH_INSTRUCTION_CACHE_ENABLE();
+            __HAL_FLASH_DATA_CACHE_ENABLE();
+            return HAL_FLASH_GetError();
         }
     }
     
     HAL_FLASH_Lock();
+    
+    // Re-enable caches and invalidate them after flash operations
+    __HAL_FLASH_INSTRUCTION_CACHE_RESET();
+    __HAL_FLASH_DATA_CACHE_RESET();
+    __HAL_FLASH_INSTRUCTION_CACHE_ENABLE();
+    __HAL_FLASH_DATA_CACHE_ENABLE();
+    
     return 0;
 }
 
