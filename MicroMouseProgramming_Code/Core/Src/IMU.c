@@ -3,435 +3,310 @@
 //*                          IMU Library                             *
 //*==================================================================*
 //* @author:    Jesse Jabez Arendse                                  *
-//* @date:      24-10-2023                                           *
+//* @date:      18-10-2024                                           *
 //*==================================================================*
 
 #include "main.h"
 #include "IMU.h"
 #include <math.h>
 
+//====================================================================
+// EXTERNAL HANDLES
+//====================================================================
 extern I2C_HandleTypeDef hi2c2;
-
-uint8_t checking = 0;
-
-float accel_x = 0;
-float accel_y = 0;
-float accel_z = 0;
-float gyro_x  = 0;
-float gyro_y  = 0;
-float gyro_z  = 0;
-
-uint16_t accelMem[3];
-uint16_t gyroMem[3];
-
-short IMUCounter = 0;
-
-float IMU_Accel[3];
-float IMU_Gyro[3];
-float IMU_Temp;
-uint8_t checkIMU;
-float accelDivisor = 16384.0f;
-float gyroDivisor = 131.0f;
-
-int16_t signNumber16(uint16_t unsignedValue){
-  int16_t signedValue;
-
-  if (unsignedValue <= INT16_MAX) {
-        signedValue = (int16_t)unsignedValue; // No change needed, it fits in the signed range.
-    } else {
-        signedValue = -((int16_t)(UINT16_MAX - unsignedValue + 1));
-    }
-
-  return signedValue;
-}
-
-static void WriteMem(uint8_t devAddress, uint8_t RegisterAddress, uint16_t Value)
-{
-  uint8_t addr[2];
-  addr[0] = (Value >> 8) & 0xff;  // upper byte
-  addr[1] = (Value >> 0) & 0xff; // lower byte
-  HAL_I2C_Mem_Write(&hi2c2, (devAddress<<1), RegisterAddress, 1, (uint8_t*)addr, 2, I2C_TIMEOUT);
-}
-
-static uint16_t ReadMem(uint8_t devAddress, uint8_t RegisterAddress)
-{
-  uint8_t Value[2];
-
-  HAL_I2C_Mem_Read(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 2, I2C_TIMEOUT);
-
-    // Check for I2C errors after all operations
-    if (hi2c2.ErrorCode != HAL_I2C_ERROR_NONE) {
-        restartI2C();
-    }
-
-  return ((Value[0] << 8) | Value[1]);
-}
-
-
-static void WriteByte(uint8_t devAddress, uint8_t RegisterAddress, uint8_t Value)
-{
-  HAL_I2C_Mem_Write(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 1, I2C_TIMEOUT);
-}
-
-static uint16_t ReadByte(uint8_t devAddress, uint8_t RegisterAddress)
-{
-  uint8_t Value;
-
-  HAL_I2C_Mem_Read(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 1, I2C_TIMEOUT);
-
-      // Check for I2C errors after all operations
-    if (hi2c2.ErrorCode != HAL_I2C_ERROR_NONE) {
-        restartI2C();
-    }
-  return Value;
-}
-
-#ifdef IMU_MPU6050
-
-void refreshIMUValues() {  
-    IMU_Accel[0] = signNumber16(ReadMem(IMU_MPU6050_I2C_ADDRESS, IMU_MPU6050_ACCEL_XOUT_H)) * IMU_GRAVITATIONAL_ACCELERATION / accelDivisor;  // Convert to m/s^2
-    IMU_Accel[1] = signNumber16(ReadMem(IMU_MPU6050_I2C_ADDRESS, IMU_MPU6050_ACCEL_YOUT_H)) * IMU_GRAVITATIONAL_ACCELERATION / accelDivisor; 
-    IMU_Accel[2] = signNumber16(ReadMem(IMU_MPU6050_I2C_ADDRESS, IMU_MPU6050_ACCEL_ZOUT_H)) * IMU_GRAVITATIONAL_ACCELERATION / accelDivisor; 
-
-    IMU_Gyro[0] = signNumber16(ReadMem(IMU_MPU6050_I2C_ADDRESS, IMU_MPU6050_GYRO_XOUT_H)) * IMU_DPS2RAD / gyroDivisor;  // Convert to rad/s
-    IMU_Gyro[1] = signNumber16(ReadMem(IMU_MPU6050_I2C_ADDRESS, IMU_MPU6050_GYRO_YOUT_H)) * IMU_DPS2RAD / gyroDivisor;
-    IMU_Gyro[2] = signNumber16(ReadMem(IMU_MPU6050_I2C_ADDRESS, IMU_MPU6050_GYRO_ZOUT_H)) * IMU_DPS2RAD / gyroDivisor;
-
-    IMU_Temp = ((int16_t)ReadMem(IMU_MPU6050_I2C_ADDRESS, IMU_MPU6050_TEMP_OUT_H)) / 340.0f + 36.53f;  // Convert to °C
-
-    #ifdef IMU_DYNAMIC_FSR
-    calibrateIMU();
-    #endif
-}
-
-void initIMU() {
-    uint8_t wake = 0;
-    HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_PWR_MGMT_1, 1, &wake, 1, I2C_TIMEOUT);
-    uint8_t sampleRate = 0x07; // Set sample rate to 1 kHz
-    HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_SMPLRT_DIV, 1, &sampleRate, 1, I2C_TIMEOUT);
-    uint8_t accelConfig = IMU_MPU6050_ACCEL_FS_2; // Full range: ±2g
-    HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_ACCEL_CONFIG, 1, &accelConfig, 1, I2C_TIMEOUT);
-    uint8_t gyroConfig = IMU_MPU6050_GYRO_FS_250; // Full range: ±250°/s
-    HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_GYRO_CONFIG, 1, &gyroConfig, 1, I2C_TIMEOUT);
-    HAL_I2C_Mem_Read(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 1, IMU_MPU6050_WHO_AM_I, 1, &checkIMU, 1, I2C_TIMEOUT);
-}
-
-void calibrateIMU() {
-    static uint8_t lastAccelConfig = IMU_MPU6050_ACCEL_FS_2; // Default ±2g
-    static uint8_t lastGyroConfig = IMU_MPU6050_GYRO_FS_250; // Default ±250°/s
-
-    uint8_t accelConfig = lastAccelConfig;
-    uint8_t gyroConfig = lastGyroConfig;
-
-    // Check each accelerometer axis
-    float accelMaxMag = 0;
-    for (int i = 0; i < 3; i++) {
-        float absAccel = fabsf(IMU_Accel[i] / IMU_GRAVITATIONAL_ACCELERATION); // Convert m/s² to g
-        accelMaxMag = (absAccel > accelMaxMag) ? absAccel : accelMaxMag;
-    }
-
-
-    accelConfig = IMU_MPU6050_ACCEL_FS_2;
-    accelDivisor = 16384.0f;
-    // Dynamic adjustment of accelerometer FSR
-    if (accelMaxMag >= 1.75f && accelMaxMag < 3.75f) { // Near ±2g limit, switch to ±4g
-        accelConfig = IMU_MPU6050_ACCEL_FS_4;
-        accelDivisor = 8192.0f;
-    } if (accelMaxMag >= 3.75f && accelMaxMag < 7.75f) { // Near ±4g limit, switch to ±8g
-        accelConfig = IMU_MPU6050_ACCEL_FS_8;
-        accelDivisor = 4096.0f;
-    } if (accelMaxMag >= 7.75f) { // Near ±8g limit, switch to ±16g
-        accelConfig = IMU_MPU6050_ACCEL_FS_16;
-        accelDivisor = 2048.0f;
-    }
-
-    // Check each gyroscope axis
-    float gyroMaxMag = 0;
-    for (int i = 0; i < 3; i++) {
-        float absGyro = fabsf(IMU_Gyro[i]); // Gyro is already in radians
-        gyroMaxMag = (absGyro > gyroMaxMag) ? absGyro : gyroMaxMag;
-    }
-
-    // Dynamic adjustment of gyroscope FSR (values in radians/s)
-    if (gyroMaxMag >= 4.3633f && gyroMaxMag < 8.7266f) { // Near ±250°/s limit, switch to ±500°/s
-        gyroConfig = IMU_MPU6050_GYRO_FS_500;
-        gyroDivisor = 65.5f;
-    } else if (gyroMaxMag >= 8.7266f && gyroMaxMag < 17.4533f) { // Near ±500°/s limit, switch to ±1000°/s
-        gyroConfig = IMU_MPU6050_GYRO_FS_1000;
-        gyroDivisor = 32.8f;
-    } else if (gyroMaxMag >= 17.4533f && gyroMaxMag < 34.9066f) { // Near ±1000°/s limit, switch to ±2000°/s
-        gyroConfig = IMU_MPU6050_GYRO_FS_2000;
-        gyroDivisor = 16.4f;
-    } else { // Default to ±250°/s for maximum resolution
-        gyroConfig = IMU_MPU6050_GYRO_FS_250;
-        gyroDivisor = 131.0f;
-    }
-
-    // Apply new configurations if they changed
-    if (lastAccelConfig != accelConfig) {
-        HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_ACCEL_CONFIG, 1, &accelConfig, 1, I2C_TIMEOUT);
-        lastAccelConfig = accelConfig;
-    }
-
-    if (lastGyroConfig != gyroConfig) {
-        HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_GYRO_CONFIG, 1, &gyroConfig, 1, I2C_TIMEOUT);
-        lastGyroConfig = gyroConfig;
-    }
-
-    // Update the divisor values globally
-    accelDivisor = (accelConfig == IMU_MPU6050_ACCEL_FS_16) ? 2048.0f :
-                   (accelConfig == IMU_MPU6050_ACCEL_FS_8) ? 4096.0f :
-                   (accelConfig == IMU_MPU6050_ACCEL_FS_4) ? 8192.0f : 16384.0f;
-
-    gyroDivisor = (gyroConfig == IMU_MPU6050_GYRO_FS_2000) ? 16.4f :
-                  (gyroConfig == IMU_MPU6050_GYRO_FS_1000) ? 32.8f :
-                  (gyroConfig == IMU_MPU6050_GYRO_FS_500) ? 65.5f : 131.0f;
-}
-
-#endif // IMU_MPU6050
-
-
-#ifdef IMU_ICM42605
-
-float _aRes, _gRes;
-
-static uint8_t getChipID()
-{
-  uint8_t c = ReadByte(ICM42605_ADDRESS, ICM42605_WHO_AM_I);
-  return c;
-}
-
-static float getAres(uint8_t Ascale) {
-  switch (Ascale)
-  {
-    // Possible accelerometer scales (and their register bit settings) are:
-    // 2 Gs (00), 4 Gs (01), 8 Gs (10), and 16 Gs  (11).
-    case AFS_2G:
-      _aRes = 2.0f / 32768.0f;
-      return _aRes;
-      break;
-    case AFS_4G:
-      _aRes = 4.0f / 32768.0f;
-      return _aRes;
-      break;
-    case AFS_8G:
-      _aRes = 8.0f / 32768.0f;
-      return _aRes;
-      break;
-    case AFS_16G:
-      _aRes = 16.0f / 32768.0f;
-      return _aRes;
-      break;
-  }
-}
-
-static float getGres(uint8_t Gscale) {
-  switch (Gscale)
-  {
-    case GFS_15_125DPS:
-      _gRes = 15.125f / 32768.0f;
-      return _gRes;
-      break;
-    case GFS_31_25DPS:
-      _gRes = 31.25f / 32768.0f;
-      return _gRes;
-      break;
-    case GFS_62_5DPS:
-      _gRes = 62.5f / 32768.0f;
-      return _gRes;
-      break;
-    case GFS_125DPS:
-      _gRes = 125.0f / 32768.0f;
-      return _gRes;
-      break;
-    case GFS_250DPS:
-      _gRes = 250.0f / 32768.0f;
-      return _gRes;
-      break;
-    case GFS_500DPS:
-      _gRes = 500.0f / 32768.0f;
-      return _gRes;
-      break;
-    case GFS_1000DPS:
-      _gRes = 1000.0f / 32768.0f;
-      return _gRes;
-      break;
-    case GFS_2000DPS:
-      _gRes = 2000.0f / 32768.0f;
-      return _gRes;
-      break;
-  }
-}
-
-
-static void resetICM42605()
-{
-  // reset device
-  uint8_t temp = ReadByte(ICM42605_ADDRESS, ICM42605_DEVICE_CONFIG);
-  WriteByte(ICM42605_ADDRESS, ICM42605_DEVICE_CONFIG, temp | 0x01); // Set bit 0 to 1 to reset ICM42605
-
-}
-
-
-static uint8_t statusICM42605()
-{
-  // reset device
-  uint8_t temp = ReadByte(ICM42605_ADDRESS, ICM42605_INT_STATUS);
-  return temp;
-}
-
-
-
-static void initICM42605(uint8_t Ascale, uint8_t Gscale, uint8_t AODR, uint8_t GODR)
-{
-  uint8_t temp = ReadByte(ICM42605_ADDRESS, ICM42605_PWR_MGMT0); // make sure not to disturb reserved bit values
-  WriteByte(ICM42605_ADDRESS, ICM42605_PWR_MGMT0, temp | 0x0F);  // enable gyro and accel in low noise mode
-
-   temp = ReadByte(ICM42605_ADDRESS, ICM42605_GYRO_CONFIG0);
-  WriteByte(ICM42605_ADDRESS, ICM42605_GYRO_CONFIG0, temp | GODR | Gscale << 5); // gyro full scale and data rate
-
-   temp = ReadByte(ICM42605_ADDRESS, ICM42605_ACCEL_CONFIG0);
-  WriteByte(ICM42605_ADDRESS, ICM42605_ACCEL_CONFIG0, temp | AODR | Ascale << 5); // set accel full scale and data rate
-
-   temp = ReadByte(ICM42605_ADDRESS, ICM42605_GYRO_CONFIG1);
-  WriteByte(ICM42605_ADDRESS, ICM42605_GYRO_CONFIG1, temp | 0xD0); // set temperature sensor low pass filter to 5Hz, use first order gyro filter
-
-  //  temp = ReadByte(ICM42605_ADDRESS, ICM42605_INT_CONFIG);
-  // WriteByte(ICM42605_ADDRESS, ICM42605_INT_CONFIG, temp | 0x18 | 0x03 ); // set both interrupts active high, push-pull, pulsed
-
-  //  temp = ReadByte(ICM42605_ADDRESS, ICM42605_INT_CONFIG1);
-  // WriteByte(ICM42605_ADDRESS, ICM42605_INT_CONFIG1, temp & ~(0x10) ); // set bit 4 to zero for proper function of INT1 and INT2
- 
-  //  temp = ReadByte(ICM42605_ADDRESS, ICM42605_INT_SOURCE0);
-  // WriteByte(ICM42605_ADDRESS, ICM42605_INT_SOURCE0, temp | 0x08 ); // route data ready interrupt to INT1
- 
-  //  temp = ReadByte(ICM42605_ADDRESS, ICM42605_INT_SOURCE3);
-  // WriteByte(ICM42605_ADDRESS, ICM42605_INT_SOURCE3, temp | 0x01 ); // route AGC interrupt interrupt to INT2
-
-  // Select Bank 4
-   temp = ReadByte(ICM42605_ADDRESS, ICM42605_REG_BANK_SEL);
-  WriteByte(ICM42605_ADDRESS, ICM42605_REG_BANK_SEL, temp | 0x04 ); // select Bank 4
-
-   temp = ReadByte(ICM42605_ADDRESS, ICM42605_APEX_CONFIG5);
-  WriteByte(ICM42605_ADDRESS, ICM42605_APEX_CONFIG5, temp & ~(0x07) ); // select unitary mounting matrix
-
-   temp = ReadByte(ICM42605_ADDRESS, ICM42605_REG_BANK_SEL);
-  WriteByte(ICM42605_ADDRESS, ICM42605_REG_BANK_SEL, temp & ~(0x07) ); // select Bank 0
-}
-
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim4;
-void refreshIMUValues() {
-    // initIMU();
+
+//====================================================================
+// GLOBAL VARIABLES
+//====================================================================
+float IMU_Accel[3] = {0.0f, 0.0f, 0.0f};
+float IMU_Gyro[3] = {0.0f, 0.0f, 0.0f};
+float IMU_Gyro_DPS[3] = {0.0f, 0.0f, 0.0f};
+float IMU_Temp = 0.0f;
+
+// Current sensitivity values (updated by calibrateIMU)
+static float accelSensitivity = ICM42605_ACCEL_SENS_2G;  // Default: ±2g
+static float gyroSensitivity = ICM42605_GYRO_SENS_15_125DPS;  // Default: ±15.125°/s
+
+// Current FSR configuration (for dynamic calibration)
+static ICM42605_AccelFS_t currentAccelFS = ICM42605_ACCEL_FS_2G;
+static ICM42605_GyroFS_t currentGyroFS = ICM42605_GYRO_FS_15_125DPS;
+
+//====================================================================
+// PRIVATE FUNCTION PROTOTYPES
+//====================================================================
+static void writeByte(uint8_t regAddr, uint8_t value);
+static uint8_t readByte(uint8_t regAddr);
+static int16_t readWord(uint8_t regAddr);
+static void setAccelFS(ICM42605_AccelFS_t fs);
+static void setGyroFS(ICM42605_GyroFS_t fs);
+static float getAccelSensitivity(ICM42605_AccelFS_t fs);
+static float getGyroSensitivity(ICM42605_GyroFS_t fs);
+
+//====================================================================
+// LOW-LEVEL I2C FUNCTIONS
+//====================================================================
+
+/**
+ * @brief Write a single byte to ICM-42605 register
+ */
+static void writeByte(uint8_t regAddr, uint8_t value) {
+    HAL_I2C_Mem_Write(&hi2c2, (ICM42605_I2C_ADDRESS << 1), regAddr, 1, &value, 1, I2C_TIMEOUT);
+}
+
+/**
+ * @brief Read a single byte from ICM-42605 register
+ */
+static uint8_t readByte(uint8_t regAddr) {
+    uint8_t value = 0;
+    HAL_I2C_Mem_Read(&hi2c2, (ICM42605_I2C_ADDRESS << 1), regAddr, 1, &value, 1, I2C_TIMEOUT);
+    
+    // Check for I2C errors
+    if (hi2c2.ErrorCode != HAL_I2C_ERROR_NONE) {
+        restartI2C();
+    }
+
+    return value;
+}
+
+/**
+ * @brief Read a 16-bit word (big-endian) from ICM-42605 register
+ * @param regAddr Address of the high byte register
+ * @return Signed 16-bit value
+ */
+static int16_t readWord(uint8_t regAddr) {
+    uint8_t buffer[2];
+    HAL_I2C_Mem_Read(&hi2c2, (ICM42605_I2C_ADDRESS << 1), regAddr, 1, buffer, 2, I2C_TIMEOUT);
+    
+    // Check for I2C errors
+    if (hi2c2.ErrorCode != HAL_I2C_ERROR_NONE) {
+        restartI2C();
+    }
+    
+    // Combine high and low bytes (big-endian)
+    return (int16_t)((buffer[0] << 8) | buffer[1]);
+}
+
+//====================================================================
+// CONFIGURATION FUNCTIONS
+//====================================================================
+
+/**
+ * @brief Set accelerometer full-scale range
+ */
+static void setAccelFS(ICM42605_AccelFS_t fs) {
+    uint8_t config = readByte(ICM42605_REG_ACCEL_CONFIG0);
+    config = (config & 0x1F) | (fs << 5);  // Clear bits 7:5, set new FS
+    writeByte(ICM42605_REG_ACCEL_CONFIG0, config);
+    currentAccelFS = fs;
+    accelSensitivity = getAccelSensitivity(fs);
+}
+
+/**
+ * @brief Set gyroscope full-scale range
+ */
+static void setGyroFS(ICM42605_GyroFS_t fs) {
+    uint8_t config = readByte(ICM42605_REG_GYRO_CONFIG0);
+    config = (config & 0x1F) | (fs << 5);  // Clear bits 7:5, set new FS
+    writeByte(ICM42605_REG_GYRO_CONFIG0, config);
+    currentGyroFS = fs;
+    gyroSensitivity = getGyroSensitivity(fs);
+}
+
+/**
+ * @brief Get accelerometer sensitivity for a given FSR
+ */
+static float getAccelSensitivity(ICM42605_AccelFS_t fs) {
+    switch (fs) {
+        case ICM42605_ACCEL_FS_2G:  return ICM42605_ACCEL_SENS_2G;
+        case ICM42605_ACCEL_FS_4G:  return ICM42605_ACCEL_SENS_4G;
+        case ICM42605_ACCEL_FS_8G:  return ICM42605_ACCEL_SENS_8G;
+        case ICM42605_ACCEL_FS_16G: return ICM42605_ACCEL_SENS_16G;
+        default: return ICM42605_ACCEL_SENS_2G;
+    }
+}
+
+/**
+ * @brief Get gyroscope sensitivity for a given FSR
+ */
+static float getGyroSensitivity(ICM42605_GyroFS_t fs) {
+    switch (fs) {
+        case ICM42605_GYRO_FS_15_125DPS: return ICM42605_GYRO_SENS_15_125DPS;
+        case ICM42605_GYRO_FS_31_25DPS:  return ICM42605_GYRO_SENS_31_25DPS;
+        case ICM42605_GYRO_FS_62_5DPS:   return ICM42605_GYRO_SENS_62_5DPS;
+        case ICM42605_GYRO_FS_125DPS:    return ICM42605_GYRO_SENS_125DPS;
+        case ICM42605_GYRO_FS_250DPS:    return ICM42605_GYRO_SENS_250DPS;
+        case ICM42605_GYRO_FS_500DPS:    return ICM42605_GYRO_SENS_500DPS;
+        case ICM42605_GYRO_FS_1000DPS:   return ICM42605_GYRO_SENS_1000DPS;
+        case ICM42605_GYRO_FS_2000DPS:   return ICM42605_GYRO_SENS_2000DPS;
+        default: return ICM42605_GYRO_SENS_15_125DPS;
+    }
+}
+
+//====================================================================
+// PUBLIC FUNCTIONS
+//====================================================================
+
+/**
+ * @brief Check IMU communication by reading WHO_AM_I register
+ */
+uint8_t checkIMU(void) {
+    return readByte(ICM42605_REG_WHO_AM_I);
+}
+
+/**
+ * @brief Initialize the ICM-42605 IMU sensor
+ */
+void initIMU(void) {
+    // Ensure we're in Bank 0
+    writeByte(ICM42605_REG_BANK_SEL, 0x00);
+    HAL_Delay(1);
+    
+    // Set power mode to low noise for both gyro and accel
+    writeByte(ICM42605_REG_PWR_MGMT0, ICM42605_PWR_MODE_LOW_NOISE);
+    HAL_Delay(50);  // Wait for sensors to power up
+    
+    // Configure accelerometer: ±2g, 1000 Hz ODR
+    uint8_t accelConfig = (ICM42605_ACCEL_FS_2G << 5) | ICM42605_ACCEL_ODR_1000Hz;
+    writeByte(ICM42605_REG_ACCEL_CONFIG0, accelConfig);
+    
+    // Configure gyroscope: ±15.125°/s, 1000 Hz ODR
+    uint8_t gyroConfig = (ICM42605_GYRO_FS_15_125DPS << 5) | ICM42605_GYRO_ODR_1000Hz;
+    writeByte(ICM42605_REG_GYRO_CONFIG0, gyroConfig);
+    
+    // Set temperature sensor low pass filter to 5Hz (GYRO_CONFIG1)
+    uint8_t gyroConfig1 = readByte(ICM42605_REG_GYRO_CONFIG1);
+    gyroConfig1 |= 0xD0;  // Set temp LPF
+    writeByte(ICM42605_REG_GYRO_CONFIG1, gyroConfig1);
+    
+    // Initialize sensitivity values
+    currentAccelFS = ICM42605_ACCEL_FS_2G;
+    currentGyroFS = ICM42605_GYRO_FS_15_125DPS;
+    accelSensitivity = ICM42605_ACCEL_SENS_2G;
+    gyroSensitivity = ICM42605_GYRO_SENS_15_125DPS;
+    
+    HAL_Delay(10);  // Allow settings to stabilize
+}
+
+/**
+ * @brief Read all sensor values from the IMU
+ */
+void refreshIMUValues(void) {
+    // Temporarily stop PWM to reduce I2C noise interference
     HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
     HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
     HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);
     HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_4);
 
-    IMU_Accel[0] = signNumber16(ReadMem(ICM42605_ADDRESS, ICM42605_ACCEL_DATA_X1)) * IMU_GRAVITATIONAL_ACCELERATION / accelDivisor;  // Convert to m/s^2
-    IMU_Accel[1] = signNumber16(ReadMem(ICM42605_ADDRESS, ICM42605_ACCEL_DATA_Y1)) * IMU_GRAVITATIONAL_ACCELERATION / accelDivisor; 
-    IMU_Accel[2] = signNumber16(ReadMem(ICM42605_ADDRESS, ICM42605_ACCEL_DATA_Z1)) * IMU_GRAVITATIONAL_ACCELERATION / accelDivisor; 
-
-    IMU_Gyro[0] = signNumber16(ReadMem(ICM42605_ADDRESS, ICM42605_GYRO_DATA_X1)) * IMU_DPS2RAD / gyroDivisor;  // Convert to rad/s
-    IMU_Gyro[1] = signNumber16(ReadMem(ICM42605_ADDRESS, ICM42605_GYRO_DATA_Y1)) * IMU_DPS2RAD / gyroDivisor;
-    IMU_Gyro[2] = signNumber16(ReadMem(ICM42605_ADDRESS, ICM42605_GYRO_DATA_Z1)) * IMU_DPS2RAD / gyroDivisor;
-
-    IMU_Temp = ((int16_t)ReadMem(ICM42605_ADDRESS, ICM42605_TEMP_DATA1)) / 132.48f + 25.0f;  // Convert to °C
-
+    // Read accelerometer data (3 axes, 16-bit each)
+    int16_t accel_x_raw = readWord(ICM42605_REG_ACCEL_DATA_X1);
+    int16_t accel_y_raw = readWord(ICM42605_REG_ACCEL_DATA_Y1);
+    int16_t accel_z_raw = readWord(ICM42605_REG_ACCEL_DATA_Z1);
+    
+    // Convert to m/s² (raw / sensitivity = g, then multiply by gravity constant)
+    IMU_Accel[0] = ((float)accel_x_raw / accelSensitivity) * IMU_GRAVITATIONAL_ACCELERATION;
+    IMU_Accel[1] = ((float)accel_y_raw / accelSensitivity) * IMU_GRAVITATIONAL_ACCELERATION;
+    IMU_Accel[2] = ((float)accel_z_raw / accelSensitivity) * IMU_GRAVITATIONAL_ACCELERATION;
+    
+    // Read gyroscope data (3 axes, 16-bit each)
+    int16_t gyro_x_raw = readWord(ICM42605_REG_GYRO_DATA_X1);
+    int16_t gyro_y_raw = readWord(ICM42605_REG_GYRO_DATA_Y1);
+    int16_t gyro_z_raw = readWord(ICM42605_REG_GYRO_DATA_Z1);
+    
+    // Convert to °/s
+    IMU_Gyro_DPS[0] = (float)gyro_x_raw / gyroSensitivity;
+    IMU_Gyro_DPS[1] = (float)gyro_y_raw / gyroSensitivity;
+    IMU_Gyro_DPS[2] = (float)gyro_z_raw / gyroSensitivity;
+    
+    // Convert to rad/s
+    IMU_Gyro[0] = IMU_Gyro_DPS[0] * IMU_DPS2RAD;
+    IMU_Gyro[1] = IMU_Gyro_DPS[1] * IMU_DPS2RAD;
+    IMU_Gyro[2] = IMU_Gyro_DPS[2] * IMU_DPS2RAD;
+    
+    // Read temperature data
+    int16_t temp_raw = readWord(ICM42605_REG_TEMP_DATA1);
+    IMU_Temp = ((float)temp_raw / 132.48f) + 25.0f;  // Convert to °C per datasheet
+    
+    // Restart PWM
     HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
     HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
+    
     #ifdef IMU_DYNAMIC_FSR
     calibrateIMU();
     #endif
 }
 
-void initIMU() {
-  // resetICM42605(); // Reset the ICM42605
-  initICM42605(AFS_2G, GFS_2000DPS, AODR_100Hz, GODR_100Hz); // Initialize with ±2g and ±125°/s
+/**
+ * @brief Dynamically calibrate IMU full-scale ranges based on current readings
+ * @note Uses 80% of max range as threshold to switch FSR before saturation
+ */
+void calibrateIMU(void) {
+    // Find maximum accelerometer magnitude across all axes
+    float accelMaxMag = 0.0f;
+    for (int i = 0; i < 3; i++) {
+        float absAccel = fabsf(IMU_Accel[i] / IMU_GRAVITATIONAL_ACCELERATION);  // Convert m/s² to g
+        if (absAccel > accelMaxMag) {
+            accelMaxMag = absAccel;
+        }
+    }
+    
+    // Determine optimal accelerometer FSR (using 80% threshold)
+    ICM42605_AccelFS_t newAccelFS = currentAccelFS;
+    
+    if (accelMaxMag < 1.6f) {  // 80% of ±2g
+        newAccelFS = ICM42605_ACCEL_FS_2G;
+    } else if (accelMaxMag < 3.2f) {  // 80% of ±4g
+        newAccelFS = ICM42605_ACCEL_FS_4G;
+    } else if (accelMaxMag < 6.4f) {  // 80% of ±8g
+        newAccelFS = ICM42605_ACCEL_FS_8G;
+    } else {  // Above 6.4g
+        newAccelFS = ICM42605_ACCEL_FS_16G;
+    }
+    
+    // Find maximum gyroscope magnitude across all axes
+    float gyroMaxMag = 0.0f;
+    for (int i = 0; i < 3; i++) {
+        float absGyro = fabsf(IMU_Gyro[i]);  // Already in rad/s
+        if (absGyro > gyroMaxMag) {
+            gyroMaxMag = absGyro;
+        }
+    }
+    
+    // Determine optimal gyroscope FSR (using 80% threshold)
+    // Thresholds are 80% of max range in rad/s
+    ICM42605_GyroFS_t newGyroFS = currentGyroFS;
+    
+    if (gyroMaxMag < 0.211f) {  // 80% of ±15.125°/s (0.264 rad/s)
+        newGyroFS = ICM42605_GYRO_FS_15_125DPS;
+    } else if (gyroMaxMag < 0.436f) {  // 80% of ±31.25°/s (0.545 rad/s)
+        newGyroFS = ICM42605_GYRO_FS_31_25DPS;
+    } else if (gyroMaxMag < 0.873f) {  // 80% of ±62.5°/s (1.091 rad/s)
+        newGyroFS = ICM42605_GYRO_FS_62_5DPS;
+    } else if (gyroMaxMag < 1.746f) {  // 80% of ±125°/s (2.182 rad/s)
+        newGyroFS = ICM42605_GYRO_FS_125DPS;
+    } else if (gyroMaxMag < 3.490f) {  // 80% of ±250°/s (4.363 rad/s)
+        newGyroFS = ICM42605_GYRO_FS_250DPS;
+    } else if (gyroMaxMag < 6.981f) {  // 80% of ±500°/s (8.727 rad/s)
+        newGyroFS = ICM42605_GYRO_FS_500DPS;
+    } else if (gyroMaxMag < 13.963f) {  // 80% of ±1000°/s (17.453 rad/s)
+        newGyroFS = ICM42605_GYRO_FS_1000DPS;
+    } else {  // Above 13.963 rad/s
+        newGyroFS = ICM42605_GYRO_FS_2000DPS;
+    }
+    
+    // Apply new configurations only if they changed
+    if (newAccelFS != currentAccelFS) {
+        setAccelFS(newAccelFS);
+    }
+    
+    if (newGyroFS != currentGyroFS) {
+        setGyroFS(newGyroFS);
+    }
 }
 
-void calibrateIMU() {
-    static uint8_t lastAccelConfig = AFS_2G; // Default ±2g
-    static uint8_t lastGyroConfig = GFS_2000DPS; // Default ±125°/s
-
-    uint8_t accelConfig = lastAccelConfig;
-    uint8_t gyroConfig = lastGyroConfig;
-
-    // Check each accelerometer axis
-    float accelMaxMag = 0;
-    for (int i = 0; i < 3; i++) {
-        float absAccel = fabsf(IMU_Accel[i] / IMU_GRAVITATIONAL_ACCELERATION); // Convert m/s² to g
-        accelMaxMag = (absAccel > accelMaxMag) ? absAccel : accelMaxMag;
-    }
-
-
-    accelConfig = AFS_2G;
-    accelDivisor = 16384.0f;
-    // Dynamic adjustment of accelerometer FSR
-    if (accelMaxMag >= 1.75f && accelMaxMag < 3.75f) { // Near ±2g limit, switch to ±4g
-        accelConfig = AFS_4G;
-        accelDivisor = 8192.0f;
-    } if (accelMaxMag >= 3.75f && accelMaxMag < 7.75f) { // Near ±4g limit, switch to ±8g
-        accelConfig = AFS_8G;
-        accelDivisor = 4096.0f;
-    } if (accelMaxMag >= 7.75f) { // Near ±8g limit, switch to ±16g
-        accelConfig = AFS_16G;
-        accelDivisor = 2048.0f;
-    }
-
-    // Check each gyroscope axis
-    float gyroMaxMag = 0;
-    for (int i = 0; i < 3; i++) {
-        float absGyro = fabsf(IMU_Gyro[i]); // Gyro is already in radians
-        gyroMaxMag = (absGyro > gyroMaxMag) ? absGyro : gyroMaxMag;
-    }
-
-
-    // Dynamic adjustment of gyroscope FSR (values in radians/s)
-    if (gyroMaxMag >= 0.0165f && gyroMaxMag < 0.0329f) { // Near ±15.125°/s limit, switch to ±31.25°/s
-        gyroConfig = GFS_31_25DPS;
-        gyroDivisor = 32768.0f / 31.25f; // ≈ 1048.96
-    } else if (gyroMaxMag >= 0.0329f && gyroMaxMag < 0.0658f) { // Near ±31.25°/s limit, switch to ±62.5°/s
-        gyroConfig = GFS_62_5DPS;
-        gyroDivisor = 32768.0f / 62.5f; // ≈ 524.29
-    } else if (gyroMaxMag >= 0.0658f && gyroMaxMag < 0.1316f) { // Near ±62.5°/s limit, switch to ±125°/s
-        gyroConfig = GFS_125DPS;
-        gyroDivisor = 32768.0f / 125.0f; // ≈ 262.14
-    } else if (gyroMaxMag >= 0.1316f && gyroMaxMag < 0.2632f) { // Near ±125°/s limit, switch to ±250°/s
-        gyroConfig = GFS_250DPS;
-        gyroDivisor = 32768.0f / 250.0f; // ≈ 131.07
-    } else if (gyroMaxMag >= 0.4363f && gyroMaxMag < 0.8727f) { // Near ±250°/s limit, switch to ±500°/s
-        gyroConfig = GFS_500DPS;
-        gyroDivisor = 32768.0f / 500.0f; // ≈ 65.54
-    } else if (gyroMaxMag >= 0.8727f && gyroMaxMag < 1.7453f) { // Near ±500°/s limit, switch to ±1000°/s
-        gyroConfig = GFS_1000DPS;
-        gyroDivisor = 32768.0f / 1000.0f; // ≈ 32.77
-    } else if (gyroMaxMag >= 1.7453f && gyroMaxMag < 3.4907f) { // Near ±1000°/s limit, switch to ±2000°/s
-        gyroConfig = GFS_2000DPS;
-        gyroDivisor = 32768.0f / 2000.0f; // ≈ 16.38
-    } else if (gyroMaxMag < 0.0165f) { // Default to ±15.125°/s for maximum resolution
-        gyroConfig = GFS_15_125DPS;
-        gyroDivisor = 32768.0f / 15.125f; // ≈ 2166.98
-    } else {
-        gyroConfig = GFS_250DPS;
-        gyroDivisor = 131.0f;
-    }
-
-    // Apply new configurations if they changed
-    // resetICM42605(); // Reset the ICM42605 to apply new settings
-    initICM42605(accelConfig, gyroConfig, AODR_1000Hz, GODR_1000Hz);
-   
-
-    // Update the divisor values globally
-    accelDivisor = (accelConfig == AFS_16G) ? 2048.0f :
-                   (accelConfig == AFS_8G) ? 4096.0f :
-                   (accelConfig == AFS_4G) ? 8192.0f : 16384.0f;
-
-    gyroDivisor = (gyroConfig == GFS_2000DPS) ? 16.4f :
-                  (gyroConfig == GFS_1000DPS) ? 32.8f :
-                  (gyroConfig == GFS_500DPS) ? 65.5f : 131.0f;
-}
-
-#endif // IMU_ICM42605
+//********************************************************************
+// END OF PROGRAM
+//********************************************************************

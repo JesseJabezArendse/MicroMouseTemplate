@@ -15,7 +15,7 @@
             ],
             "liveWatch": {
                 "enabled": true,
-                "samplesPerSecond": 100
+                "samplesPerSecond": 20
             }
         },
         {
@@ -31,6 +31,45 @@
             "configFiles": [
                 "openocd.cfg"
             ]
+        },
+        {
+            "showDevDebugOutput": "both",
+            "cwd": "${workspaceRoot}",
+            "executable": "./build/debug/MicroMouseProgramming.elf",
+            "name": "Debug STM32 (J-Link SWD)",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "jlink",
+            "serverpath": "C:/Program Files/SEGGER/JLink_V868/JLinkGDBServerCL.exe",
+            "preLaunchTask": "Build STM",
+            "device": "STM32L476VE",
+            "interface": "swd",
+            "runToEntryPoint": "main",
+            "svdFile": "${workspaceRoot}/STM32L476.svd",
+            "serverArgs": ["-speed", "12000"],
+            "liveWatch": {
+                "enabled": true,
+                "samplesPerSecond": 20
+            }
+        },
+        {
+            "showDevDebugOutput": "both",
+            "cwd": "${workspaceRoot}",
+            "executable": "./build/debug/MicroMouseProgramming.elf",
+            "name": "Attach STM32 (J-Link SWD)",
+            "request": "attach",
+            "type": "cortex-debug",
+            "servertype": "jlink",
+            "device": "STM32L476VE",
+            "interface": "swd",
+            "serverArgs": [
+                "-strict", 
+                "-timeout", "10000",
+                "-speed", "1000",
+                "-vd"
+            ],
+            "rtos": "auto",
+            "svdFile": "${workspaceRoot}/STM32L476.svd"
         }
     ]
 }
