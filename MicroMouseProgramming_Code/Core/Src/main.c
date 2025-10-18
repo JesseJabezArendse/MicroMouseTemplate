@@ -318,22 +318,22 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
     uint16_t sample_count;
     uint8_t state;
-    uint8_t LEDs[3];
+    uint8_t LEDs;              // Packed: bit0=LED0, bit1=LED1, bit2=LED2
     int8_t Motor_Left;
     int8_t Motor_Right;
     uint16_t Distance_Left;
     uint16_t Distance_Centre;
     uint16_t Distance_Right;
-    uint16_t PHOTO_DOWN_LS;
-    uint16_t PHOTO_DOWN_RS;
-    uint16_t PHOTO_MOT_LS;
-    uint16_t PHOTO_MOT_RS;
-    uint16_t IMU_Accel_X;
-    uint16_t IMU_Accel_Y;
-    uint16_t IMU_Accel_Z;
-    uint16_t IMU_Gyro_X;
-    uint16_t IMU_Gyro_Y;
-    uint16_t IMU_Gyro_Z;
+    uint8_t PHOTO_DOWN_LS;     // Voltage 0-3.3V mapped to 0-255
+    uint8_t PHOTO_DOWN_RS;
+    uint8_t PHOTO_MOT_LS;
+    uint8_t PHOTO_MOT_RS;
+    int16_t IMU_Accel_X;       // Scaled by 1000 (e.g. -9.8 → -9800)
+    int16_t IMU_Accel_Y;
+    int16_t IMU_Accel_Z;
+    int16_t IMU_Gyro_X;
+    int16_t IMU_Gyro_Y;
+    int16_t IMU_Gyro_Z;
 } MicroMouseLog_t;
 
 void initLogs() {
@@ -401,25 +401,25 @@ void refreshLoggedData() {
     MicroMouseLog_t log;
     log.sample_count = log_sample_counter++;  // Auto-wraps at 65535
     log.state = STATE;
-    log.LEDs[0] = LED[0];
-    log.LEDs[1] = LED[1];
-    log.LEDs[2] = LED[2];
+    // Pack LEDs into single byte: bit0=LED0, bit1=LED1, bit2=LED2
+    log.LEDs = (LED[0] & 0x01) | ((LED[1] & 0x01) << 1) | ((LED[2] & 0x01) << 2);
     log.Motor_Left = MOTOR_LS;
     log.Motor_Right = MOTOR_RS;
     log.Distance_Left = (uint16_t)(TOF_left_result.Distance > 4095 ? 4095 : TOF_left_result.Distance);
     log.Distance_Centre = (uint16_t)(TOF_centre_result.Distance > 4095 ? 4095 : TOF_centre_result.Distance);
     log.Distance_Right = (uint16_t)(TOF_right_result.Distance > 4095 ? 4095 : TOF_right_result.Distance);
-    log.PHOTO_DOWN_LS = V_PHOTO_DOWN_LS;
-    log.PHOTO_DOWN_RS = V_PHOTO_DOWN_RS;
-    log.PHOTO_MOT_LS = V_PHOTO_MOT_LS;
-    log.PHOTO_MOT_RS = V_PHOTO_MOT_RS;
-    // Add IMU accel x, accel y, and gyro z
-    log.IMU_Accel_X = (uint16_t)(IMU_Accel[0] * 1000.0f);
-    log.IMU_Accel_Y = (uint16_t)(IMU_Accel[1] * 1000.0f);
-    log.IMU_Accel_Z = (uint16_t)(IMU_Accel[2] * 1000.0f);
-    log.IMU_Gyro_X = (uint16_t)(IMU_Gyro[0] * 1000.0f);
-    log.IMU_Gyro_Y = (uint16_t)(IMU_Gyro[1] * 1000.0f);
-    log.IMU_Gyro_Z = (uint16_t)(IMU_Gyro[2] * 1000.0f);
+    // Convert ADC (0-65535) to voltage uint8 (0-255 representing 0-3.3V)
+    log.PHOTO_DOWN_LS = (uint8_t)((V_PHOTO_DOWN_LS * 255UL) / 65535UL);
+    log.PHOTO_DOWN_RS = (uint8_t)((V_PHOTO_DOWN_RS * 255UL) / 65535UL);
+    log.PHOTO_MOT_LS = (uint8_t)((V_PHOTO_MOT_LS * 255UL) / 65535UL);
+    log.PHOTO_MOT_RS = (uint8_t)((V_PHOTO_MOT_RS * 255UL) / 65535UL);
+    // IMU data scaled by 1000 and stored as signed int16 (e.g. -9.8 m/s² → -9800)
+    log.IMU_Accel_X = (int16_t)(IMU_Accel[0] * 1000.0f);
+    log.IMU_Accel_Y = (int16_t)(IMU_Accel[1] * 1000.0f);
+    log.IMU_Accel_Z = (int16_t)(IMU_Accel[2] * 1000.0f);
+    log.IMU_Gyro_X = (int16_t)(IMU_Gyro[0] * 1000.0f);
+    log.IMU_Gyro_Y = (int16_t)(IMU_Gyro[1] * 1000.0f);
+    log.IMU_Gyro_Z = (int16_t)(IMU_Gyro[2] * 1000.0f);
     // Check if flash at 0x807FFFF is not 0xFF, stop logging and indicate full
     if (*((uint8_t*)0x807FFFF) != 0xFF) {
         logging_enabled = false;
