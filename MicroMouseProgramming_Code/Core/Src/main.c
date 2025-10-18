@@ -432,35 +432,31 @@ void refreshLoggedData() {
         refreshScreen();
         return;
     }
-    // Check if log struct fits completely in current buffer
-    uint16_t bytes_available = USB_BUFFER_SIZE - usb_storage_buffer_index[active_usb_buffer];
+    // Write log to buffer, handling 2KB boundary with partial writes and flushing
+    uint8_t *log_bytes = (uint8_t*)&log;
+    uint16_t log_offset = 0;
     
-    if (bytes_available >= sizeof(MicroMouseLog_t)) {
-        // Log fits completely in current buffer
+    while (log_offset < sizeof(MicroMouseLog_t)) {
+        // Calculate how much space is left in current buffer
+        uint16_t buffer_space = USB_BUFFER_SIZE - usb_storage_buffer_index[active_usb_buffer];
+        
+        // Write as much as we can (either remaining log bytes or remaining buffer space)
+        uint16_t to_write = (sizeof(MicroMouseLog_t) - log_offset < buffer_space) ? 
+                            (sizeof(MicroMouseLog_t) - log_offset) : buffer_space;
+        
         memcpy(&USB_storage_buffer[active_usb_buffer][usb_storage_buffer_index[active_usb_buffer]], 
-               &log, sizeof(MicroMouseLog_t));
-        usb_storage_buffer_index[active_usb_buffer] += sizeof(MicroMouseLog_t);
-    } else {
-        // Log spans buffer boundary - split write to avoid data loss
-        uint8_t *log_bytes = (uint8_t*)&log;
+               log_bytes + log_offset, to_write);
         
-        // Write first part to current buffer (fill it completely)
-        memcpy(&USB_storage_buffer[active_usb_buffer][usb_storage_buffer_index[active_usb_buffer]], 
-               log_bytes, bytes_available);
+        usb_storage_buffer_index[active_usb_buffer] += to_write;
+        log_offset += to_write;
         
-        // Flush current buffer to flash
-        Flash_Write_Data(log_flash_write_addr, USB_storage_buffer[active_usb_buffer], USB_BUFFER_SIZE);
-        log_flash_write_addr += LOG_FLASH_PAGE_SIZE;
-        
-        // Switch to next buffer
-        active_usb_buffer ^= 1;
-        usb_storage_buffer_index[active_usb_buffer] = 0;
-        
-        // Write remaining part to new buffer
-        uint16_t bytes_remaining = sizeof(MicroMouseLog_t) - bytes_available;
-        memcpy(&USB_storage_buffer[active_usb_buffer][0], 
-               log_bytes + bytes_available, bytes_remaining);
-        usb_storage_buffer_index[active_usb_buffer] = bytes_remaining;
+        // If buffer is full (reached 2KB), flush it
+        if (usb_storage_buffer_index[active_usb_buffer] >= USB_BUFFER_SIZE) {
+            Flash_Write_Data(log_flash_write_addr, USB_storage_buffer[active_usb_buffer], USB_BUFFER_SIZE);
+            log_flash_write_addr += USB_BUFFER_SIZE;
+            active_usb_buffer ^= 1;
+            usb_storage_buffer_index[active_usb_buffer] = 0;
+        }
     }
     readyToLog = false;
 }

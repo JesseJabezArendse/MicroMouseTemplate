@@ -8,7 +8,8 @@
 
 uint8_t STATE = 1;
 
-uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
+// Buffer MUST be 8-byte aligned for FLASH_TYPEPROGRAM_FAST
+__attribute__((aligned(8))) uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
 uint16_t usb_storage_buffer_index[2] = {0, 0};
 uint8_t active_usb_buffer = 0;
 uint32_t log_flash_write_addr = LOG_FLASH_START_ADDR;
@@ -58,13 +59,38 @@ uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint8_t *Data, uint32_t num
     uint32_t EndPageAddress = StartPageAddress + numBytes;
     uint32_t EndPage = GetPage(EndPageAddress);
     HAL_FLASH_Unlock();
-    for (uint32_t i = 0; i < numBytes; i += 8)
+    
+    // Use fast programming for full 2K pages (much faster than doubleword)
+    if (numBytes == STM32L476_FLASH_PAGE_SIZE && (StartPageAddress % STM32L476_FLASH_PAGE_SIZE) == 0)
     {
-        uint64_t data64 = 0;
-        memcpy(&data64, &Data[i], 8);
-        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, StartPageAddress + i, data64) != HAL_OK)
-            return HAL_FLASH_GetError();
+        // Fast programming: writes in 256-byte rows (8 rows = 2KB page)
+        // Note: Flash page must be erased first (or already blank)
+        for (uint32_t row = 0; row < 8; row++)
+        {
+            uint32_t row_addr = StartPageAddress + (row * 256);
+            uint32_t row_data = (uint32_t)(Data + (row * 256));
+            if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_FAST, row_addr, row_data) != HAL_OK)
+            {
+                HAL_FLASH_Lock();
+                return HAL_FLASH_GetError();
+            }
+        }
     }
+    else
+    {
+        // Fall back to doubleword programming for partial pages
+        for (uint32_t i = 0; i < numBytes; i += 8)
+        {
+            uint64_t data64 = 0;
+            memcpy(&data64, &Data[i], 8);
+            if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, StartPageAddress + i, data64) != HAL_OK)
+            {
+                HAL_FLASH_Lock();
+                return HAL_FLASH_GetError();
+            }
+        }
+    }
+    
     HAL_FLASH_Lock();
     return 0;
 }
