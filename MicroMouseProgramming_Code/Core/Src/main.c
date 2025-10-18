@@ -316,11 +316,11 @@ typedef struct __attribute__((packed)) {
 } MicroMouseLogHeader_t;
 
 typedef struct __attribute__((packed)) {
+    uint16_t sample_count;
     uint8_t state;
     uint8_t LEDs[3];
     int8_t Motor_Left;
     int8_t Motor_Right;
-    uint16_t sample_count;
     uint16_t Distance_Left;
     uint16_t Distance_Centre;
     uint16_t Distance_Right;
@@ -399,13 +399,13 @@ void refreshLoggedData() {
     }
 
     MicroMouseLog_t log;
+    log.sample_count = log_sample_counter++;  // Auto-wraps at 65535
     log.state = STATE;
     log.LEDs[0] = LED[0];
     log.LEDs[1] = LED[1];
     log.LEDs[2] = LED[2];
     log.Motor_Left = MOTOR_LS;
     log.Motor_Right = MOTOR_RS;
-    log.sample_count = log_sample_counter++;  // Auto-wraps at 65535
     log.Distance_Left = (uint16_t)(TOF_left_result.Distance > 4095 ? 4095 : TOF_left_result.Distance);
     log.Distance_Centre = (uint16_t)(TOF_centre_result.Distance > 4095 ? 4095 : TOF_centre_result.Distance);
     log.Distance_Right = (uint16_t)(TOF_right_result.Distance > 4095 ? 4095 : TOF_right_result.Distance);
@@ -432,23 +432,35 @@ void refreshLoggedData() {
         refreshScreen();
         return;
     }
-    // Calculate CRC as bitwise AND of UID, motors, and state
-    // Use last 3 bytes of UID and bitwise AND with Motor_Left, Motor_Right, and state, each shifted to fill 24 bits
-    uint8_t *uid_ptr = (uint8_t*)0x1FFF7590;
-    uint32_t uid24 = (uid_ptr[9] << 16) | (uid_ptr[10] << 8) | uid_ptr[11];
-    uint32_t log24 = ((uint8_t)log.Motor_Left << 16) | ((uint8_t)log.Motor_Right << 8) | ((uint8_t)log.state);
-    // log.crc = uid24 & log24;
-    memcpy(&USB_storage_buffer[active_usb_buffer][usb_storage_buffer_index[active_usb_buffer]], &log, sizeof(MicroMouseLog_t));
-    usb_storage_buffer_index[active_usb_buffer] += sizeof(log);
-
-    if (usb_storage_buffer_index[active_usb_buffer] + sizeof(log) > USB_BUFFER_SIZE) {
-        // Offload current buffer to flash
+    // Check if log struct fits completely in current buffer
+    uint16_t bytes_available = USB_BUFFER_SIZE - usb_storage_buffer_index[active_usb_buffer];
+    
+    if (bytes_available >= sizeof(MicroMouseLog_t)) {
+        // Log fits completely in current buffer
+        memcpy(&USB_storage_buffer[active_usb_buffer][usb_storage_buffer_index[active_usb_buffer]], 
+               &log, sizeof(MicroMouseLog_t));
+        usb_storage_buffer_index[active_usb_buffer] += sizeof(MicroMouseLog_t);
+    } else {
+        // Log spans buffer boundary - split write to avoid data loss
+        uint8_t *log_bytes = (uint8_t*)&log;
+        
+        // Write first part to current buffer (fill it completely)
+        memcpy(&USB_storage_buffer[active_usb_buffer][usb_storage_buffer_index[active_usb_buffer]], 
+               log_bytes, bytes_available);
+        
+        // Flush current buffer to flash
         Flash_Write_Data(log_flash_write_addr, USB_storage_buffer[active_usb_buffer], USB_BUFFER_SIZE);
         log_flash_write_addr += LOG_FLASH_PAGE_SIZE;
-        // Switch buffer
+        
+        // Switch to next buffer
         active_usb_buffer ^= 1;
         usb_storage_buffer_index[active_usb_buffer] = 0;
-        first_buffer = false;
+        
+        // Write remaining part to new buffer
+        uint16_t bytes_remaining = sizeof(MicroMouseLog_t) - bytes_available;
+        memcpy(&USB_storage_buffer[active_usb_buffer][0], 
+               log_bytes + bytes_available, bytes_remaining);
+        usb_storage_buffer_index[active_usb_buffer] = bytes_remaining;
     }
     readyToLog = false;
 }
