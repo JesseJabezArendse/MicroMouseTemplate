@@ -13,6 +13,7 @@ __attribute__((aligned(8))) uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
 uint16_t usb_storage_buffer_index[2] = {0, 0};
 uint8_t active_usb_buffer = 0;
 uint32_t log_flash_write_addr = 0;  // Will be set dynamically by detectLogStartAddress()
+uint32_t log_flash_start_addr = 0;  // Starting address for percentage calculation
 uint8_t readyToLog;
 
 uint32_t GetPage(uint32_t Address)

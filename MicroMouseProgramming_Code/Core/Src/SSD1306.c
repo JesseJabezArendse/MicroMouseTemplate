@@ -22,8 +22,6 @@
 #include "main.h"
 #include "stdbool.h"
 
-static bool doesSSD1306Exist = true;
-
 extern I2C_HandleTypeDef hi2c2;
 #define SSD1306_I2C &hi2c2
 
@@ -414,7 +412,7 @@ uint8_t SSD1306_Init(void) {
 	/* Check if LCD connected to I2C */
 	if (HAL_I2C_IsDeviceReady(SSD1306_I2C, SSD1306_I2C_ADDR, 1, I2C_TIMEOUT) != HAL_OK) {
 		/* Return false */
-		doesSSD1306Exist = false;
+		SSD1306.Initialized = false;
 		return 0;
 	}
 	
@@ -490,7 +488,7 @@ uint8_t SSD1306_Init(void) {
 	SSD1306.Initialized = 1;
 	
 	/* Return OK */
-	doesSSD1306Exist = true;
+	SSD1306.Initialized = true;
 	return 1;
 }
 
@@ -1020,12 +1018,11 @@ void SSD1306_I2C_Write(uint8_t address, uint8_t reg, uint8_t data) {
 }
 
 void initScreen(){
-	if (!doesSSD1306Exist) return;
 	SSD1306_Init();
 }
 
 void refreshScreen() {
-	if (!doesSSD1306Exist) return;
+	if (!SSD1306.Initialized) return;
 #ifdef SCREEN_FONT_DYNAMIC
     uint16_t y_position = 0; // Start at the top of the screen
     uint16_t max_width = SSD1306_WIDTH; // Maximum width of the screen
