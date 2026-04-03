@@ -334,7 +334,7 @@ $(RELEASE_DIRECTORY)/%.o: %.sx STM32Make.make | $(RELEASE_DIRECTORY)
 	$(AS) -c $(ASFLAGS) $< -o $@
 
 $(RELEASE_DIRECTORY)/$(TARGET).elf: $(OBJECTS) STM32Make.make | $(RELEASE_DIRECTORY)
-	@echo $(OBJECTS) > $@.in
+	$(file >$@.in,$(OBJECTS))
 	$(CC) @$@.in $(LDFLAGS) -o $@
 	$(SZ) $@
 

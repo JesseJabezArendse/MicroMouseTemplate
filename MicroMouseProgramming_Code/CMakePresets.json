@@ -1,0 +1,63 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "base",
+            "description": "Base preset with common settings for STM32 development",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "ARM_TOOLCHAIN_PATH": "C:/ST/STM32CubeIDE_1.13.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.11.3.rel1.win32_1.1.0.202305231506/tools/bin",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "Micromouse - Template",
+            "displayName": "Micromouse Template",
+            "description": "Configure for standard Micromouse template build",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/arm-toolchain.cmake",
+                "TARGET_DEVICE": "STM32L476xx"
+            }
+        },
+        {
+            "name": "Micromouse - Diagnostics",
+            "displayName": "Micromouse Diagnostics",
+            "description": "Configure for Micromouse with diagnostic features enabled",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/arm-toolchain.cmake",
+                "TARGET_DEVICE": "STM32L476xx",
+                "ENABLE_DIAGNOSTICS": "ON"
+            }
+        },
+        {
+            "name": "MicroMouse - C Template",
+            "displayName": "Custom configure preset",
+            "description": "Sets Ninja generator, build and install directory",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "Micromouse - Template",
+            "configurePreset": "Micromouse - Template",
+            "jobs": 4
+        },
+        {
+            "name": "Micromouse - Diagnostics",
+            "configurePreset": "Micromouse - Diagnostics",
+            "jobs": 4
+        }
+    ]
+}

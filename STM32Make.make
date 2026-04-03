@@ -191,7 +191,7 @@ CXXFLAGS += $(ASSEMBLER_LIST_OUTPUT_FLAG)
 # LDFLAGS
 #######################################
 # link script
-LDSCRIPT = MicroMouseProgramming_Code/STM32L476VETX_FLASH.ld
+LDSCRIPT = ./MicroMouseProgramming_Code/STM32L476VETx_FLASH.ld
 
 # libraries
 LIBS = -lc -lm 

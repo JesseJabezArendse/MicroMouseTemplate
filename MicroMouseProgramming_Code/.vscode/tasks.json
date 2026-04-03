@@ -2,49 +2,106 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "Build STM",
-			"type": "process",
-			"command": "${command:stm32-for-vscode.build}",
+			"label": "Initialization: Install Python Dependencies",
+			"type": "shell",
+			"command": "python",
+			"args": ["-m", "pip", "install", "-r", "Scripts/requirements.txt"],
 			"options": {
 				"cwd": "${workspaceRoot}"
 			},
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
-			"problemMatcher": [
-				"$gcc"
-			]
+			"presentation": {
+				"reveal": "always",
+				"panel": "new"
+            },
+			"runOptions": {
+				"runOn": "folderOpen"
+			}
 		},
 		{
-			"label": "Build Clean STM",
-			"type": "process",
-			"command": "${command:stm32-for-vscode.cleanBuild}",
+			"label": "Initialization: Setup ARM Toolchain",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"${workspaceRoot}/scripts/setup-toolchain.py"
+			],
 			"options": {
 				"cwd": "${workspaceRoot}"
 			},
 			"group": {
 				"kind": "build",
-				"isDefault": true
+				"isDefault": false
 			},
-			"problemMatcher": [
-				"$gcc"
-			]
+			"presentation": {
+				"clear": true,
+				"panel": "new"
+            },
+			"runOptions": {
+				"runOn": "folderOpen"
+			}
+		},
+        {
+            "label": "Initialization: Setup OpenOCD",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "${workspaceRoot}/scripts/setup-openocd.py"
+            ],
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "clear": true,
+                "panel": "new"
+            },
+			"runOptions": {
+				"runOn": "folderOpen"
+			}
+        },
+		{
+			"label": "Start MicroMouse Interface",
+			"type": "shell",
+			"command": "python",
+			"args": ["Scripts/micromouse_interface.py"],
+			"options": {
+				"cwd": "${workspaceRoot}"
+			},
+			"isBackground": true,
+			"presentation": {
+				"reveal": "always",
+				"panel": "new"
+			},
+			"problemMatcher": {
+				"pattern": {
+					"regexp": "^.*$",
+					"file": 1,
+					"location": 2,
+					"message": 3
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": ".*Running on.*",
+					"endsPattern": ".*Press CTRL.*"
+				}
+			}
 		},
 		{
-			"label": "Flash STM",
-			"type": "process",
-			"command": "${command:stm32-for-vscode.flash}",
+			"label": "Open MicroMouse Interface",
+			"type": "shell",
+			"command": "python",
+			"args": ["-m", "webbrowser", "http://127.0.0.1:5000"],
 			"options": {
 				"cwd": "${workspaceRoot}"
 			},
-			"group": {
-				"kind": "build",
-				"isDefault": true
+			"presentation": {
+				"reveal": "silent"
 			},
-			"problemMatcher": [
-				"$gcc"
-			]
+			"runOptions": {
+				"runOn": "folderOpen"
+			}
 		}
 	]
 }
