@@ -1,19 +1,18 @@
 //********************************************************************
 //*                          Micro Mouse                             *
-//*                          IMU Library                             *
+//*                          IMU Library (Multi-IC Support)          *
 //*==================================================================*
 //* @author:    Jesse Jabez Arendse                                  *
 //* @date:      18-10-2024                                           *
+//* @modified:  Dual IC support with conditional compilation         *
 //*==================================================================*
 //*                                                                  *
 //* Description:                                                     *
-//* This header file provides an interface for communicating with    *
-//* the ICM-42605 6-axis IMU sensor. The library handles sensor      *
-//* initialization, dynamic FSR calibration, and reading of          *
-//* accelerometer and gyroscope data for motion tracking.            *
+//* This IMU library supports multiple sensor options:               *
+//*   - LSM6DS3 (STMicroelectronics) - Default                       *
+//*   - ICM-42605 (TDK InvenSense) - Define IMU_USE_ICM42605         *
 //*                                                                  *
-//* Datasheet: DS-000292-ICM-42605-v1.5.pdf                          *
-//* https://invensense.tdk.com/wp-content/uploads/2020/09/DS-000292-ICM-42605-v1.5.pdf
+//* Configure via compiler define: IMU_USE_ICM42605 or default LSM6DS3
 //********************************************************************
 
 #ifndef IMU_H
@@ -21,6 +20,28 @@
 
 #include "stm32l4xx.h"
 #include "main.h"
+#include <stdint.h>
+
+//====================================================================
+// IMU IC SELECTION
+//====================================================================
+// Define IMU_USE_ICM42605 to use ICM-42605, otherwise defaults to LSM6DS3
+// #define IMU_USE_ICM42605
+
+//====================================================================
+// TYPE DEFINITIONS
+//====================================================================
+typedef unsigned char u8_t;
+typedef unsigned short int u16_t;
+typedef unsigned int u32_t;
+typedef int i32_t;
+typedef short int i16_t;
+typedef signed char i8_t;
+
+typedef enum {
+    MEMS_SUCCESS = 0x01,
+    MEMS_ERROR = 0x00
+} mems_status_t;
 
 //====================================================================
 // CONFIGURATION
@@ -33,18 +54,26 @@
 // GLOBAL CONSTANTS
 //====================================================================
 #define IMU_GRAVITATIONAL_ACCELERATION 9.80665f  // Standard gravity in m/s²
-#define IMU_DPS2RAD 0.01745329251994329576923690768489f  // π/180: degrees/s to rad/s
-#define IMU_RAD2DPS 57.295779513082320876798154814105f   // 180/π: rad/s to degrees/s
+#define IMU_DPS2RAD 0.01745329251994329576923690768489f  // π/180
+#define IMU_RAD2DPS 57.295779513082320876798154814105f   // 180/π
 
 //====================================================================
-// ICM-42605 I2C CONFIGURATION
+// I2C CONFIGURATION (Common)
 //====================================================================
-#define ICM42605_I2C_ADDRESS    0x68  // 7-bit address (0xD0 write, 0xD1 read in 8-bit)
-#define I2C_TIMEOUT             100   // I2C timeout in ms
+// I2C timeout is defined in main.h (20ms)
 
 //====================================================================
-// ICM-42605 REGISTER MAP (BANK 0)
+// IC-SPECIFIC DEFINITIONS
 //====================================================================
+
+#ifdef IMU_USE_ICM42605
+// ==================== ICM-42605 Configuration ====================
+
+#define ICM42605_I2C_ADDRESS    0x68  // 7-bit address
+#define ICM42605_REG_WHO_AM_I   0x75
+#define ICM42605_WHO_AM_I_VAL   0x42
+
+// Register Map (BANK 0)
 typedef enum {
     ICM42605_REG_DEVICE_CONFIG      = 0x11,
     ICM42605_REG_DRIVE_CONFIG       = 0x13,
@@ -70,58 +99,49 @@ typedef enum {
     ICM42605_REG_ACCEL_CONFIG0      = 0x50,
     ICM42605_REG_GYRO_CONFIG1       = 0x51,
     ICM42605_REG_ACCEL_CONFIG1      = 0x53,
-    ICM42605_REG_WHO_AM_I           = 0x75,
     ICM42605_REG_BANK_SEL           = 0x76
 } ICM42605_Register_t;
 
-//====================================================================
-// ACCELEROMETER FULL-SCALE RANGE (AFS_SEL)
-//====================================================================
+// Accelerometer FSR
 typedef enum {
-    ICM42605_ACCEL_FS_16G = 0x00,  // ±16g (default)
-    ICM42605_ACCEL_FS_8G  = 0x01,  // ±8g
-    ICM42605_ACCEL_FS_4G  = 0x02,  // ±4g
-    ICM42605_ACCEL_FS_2G  = 0x03   // ±2g
+    ICM42605_ACCEL_FS_16G = 0x00,
+    ICM42605_ACCEL_FS_8G  = 0x01,
+    ICM42605_ACCEL_FS_4G  = 0x02,
+    ICM42605_ACCEL_FS_2G  = 0x03
 } ICM42605_AccelFS_t;
 
-// Accelerometer sensitivity values (LSB/g) from datasheet
-#define ICM42605_ACCEL_SENS_16G  2048.0f   // ±16g: 2048 LSB/g
-#define ICM42605_ACCEL_SENS_8G   4096.0f   // ±8g:  4096 LSB/g
-#define ICM42605_ACCEL_SENS_4G   8192.0f   // ±4g:  8192 LSB/g
-#define ICM42605_ACCEL_SENS_2G   16384.0f  // ±2g:  16384 LSB/g
+#define ICM42605_ACCEL_SENS_16G  2048.0f
+#define ICM42605_ACCEL_SENS_8G   4096.0f
+#define ICM42605_ACCEL_SENS_4G   8192.0f
+#define ICM42605_ACCEL_SENS_2G   16384.0f
 
-//====================================================================
-// GYROSCOPE FULL-SCALE RANGE (GYRO_FS_SEL)
-//====================================================================
+// Gyroscope FSR
 typedef enum {
-    ICM42605_GYRO_FS_2000DPS   = 0x00,  // ±2000°/s (default)
-    ICM42605_GYRO_FS_1000DPS   = 0x01,  // ±1000°/s
-    ICM42605_GYRO_FS_500DPS    = 0x02,  // ±500°/s
-    ICM42605_GYRO_FS_250DPS    = 0x03,  // ±250°/s
-    ICM42605_GYRO_FS_125DPS    = 0x04,  // ±125°/s
-    ICM42605_GYRO_FS_62_5DPS   = 0x05,  // ±62.5°/s
-    ICM42605_GYRO_FS_31_25DPS  = 0x06,  // ±31.25°/s
-    ICM42605_GYRO_FS_15_125DPS = 0x07   // ±15.125°/s
+    ICM42605_GYRO_FS_2000DPS   = 0x00,
+    ICM42605_GYRO_FS_1000DPS   = 0x01,
+    ICM42605_GYRO_FS_500DPS    = 0x02,
+    ICM42605_GYRO_FS_250DPS    = 0x03,
+    ICM42605_GYRO_FS_125DPS    = 0x04,
+    ICM42605_GYRO_FS_62_5DPS   = 0x05,
+    ICM42605_GYRO_FS_31_25DPS  = 0x06,
+    ICM42605_GYRO_FS_15_125DPS = 0x07
 } ICM42605_GyroFS_t;
 
-// Gyroscope sensitivity values (LSB/(°/s)) from datasheet Table 2
-#define ICM42605_GYRO_SENS_2000DPS    16.4f    // ±2000°/s:   16.4 LSB/(°/s)
-#define ICM42605_GYRO_SENS_1000DPS    32.8f    // ±1000°/s:   32.8 LSB/(°/s)
-#define ICM42605_GYRO_SENS_500DPS     65.5f    // ±500°/s:    65.5 LSB/(°/s)
-#define ICM42605_GYRO_SENS_250DPS     131.0f   // ±250°/s:    131.0 LSB/(°/s)
-#define ICM42605_GYRO_SENS_125DPS     262.0f   // ±125°/s:    262.0 LSB/(°/s)
-#define ICM42605_GYRO_SENS_62_5DPS    524.3f   // ±62.5°/s:   524.3 LSB/(°/s)
-#define ICM42605_GYRO_SENS_31_25DPS   1048.6f  // ±31.25°/s:  1048.6 LSB/(°/s)
-#define ICM42605_GYRO_SENS_15_125DPS  2097.2f  // ±15.125°/s: 2097.2 LSB/(°/s)
+#define ICM42605_GYRO_SENS_2000DPS    16.4f
+#define ICM42605_GYRO_SENS_1000DPS    32.8f
+#define ICM42605_GYRO_SENS_500DPS     65.5f
+#define ICM42605_GYRO_SENS_250DPS     131.0f
+#define ICM42605_GYRO_SENS_125DPS     262.0f
+#define ICM42605_GYRO_SENS_62_5DPS    524.3f
+#define ICM42605_GYRO_SENS_31_25DPS   1048.6f
+#define ICM42605_GYRO_SENS_15_125DPS  2097.2f
 
-//====================================================================
-// ACCELEROMETER OUTPUT DATA RATE (ACCEL_ODR)
-//====================================================================
+// Accel ODR
 typedef enum {
     ICM42605_ACCEL_ODR_8000Hz   = 0x03,
     ICM42605_ACCEL_ODR_4000Hz   = 0x04,
     ICM42605_ACCEL_ODR_2000Hz   = 0x05,
-    ICM42605_ACCEL_ODR_1000Hz   = 0x06,  // Default
+    ICM42605_ACCEL_ODR_1000Hz   = 0x06,
     ICM42605_ACCEL_ODR_200Hz    = 0x07,
     ICM42605_ACCEL_ODR_100Hz    = 0x08,
     ICM42605_ACCEL_ODR_50Hz     = 0x09,
@@ -133,14 +153,12 @@ typedef enum {
     ICM42605_ACCEL_ODR_500Hz    = 0x0F
 } ICM42605_AccelODR_t;
 
-//====================================================================
-// GYROSCOPE OUTPUT DATA RATE (GYRO_ODR)
-//====================================================================
+// Gyro ODR
 typedef enum {
     ICM42605_GYRO_ODR_8000Hz  = 0x03,
     ICM42605_GYRO_ODR_4000Hz  = 0x04,
     ICM42605_GYRO_ODR_2000Hz  = 0x05,
-    ICM42605_GYRO_ODR_1000Hz  = 0x06,  // Default
+    ICM42605_GYRO_ODR_1000Hz  = 0x06,
     ICM42605_GYRO_ODR_200Hz   = 0x07,
     ICM42605_GYRO_ODR_100Hz   = 0x08,
     ICM42605_GYRO_ODR_50Hz    = 0x09,
@@ -149,48 +167,149 @@ typedef enum {
     ICM42605_GYRO_ODR_500Hz   = 0x0F
 } ICM42605_GyroODR_t;
 
-//====================================================================
-// POWER MANAGEMENT MODES
-//====================================================================
+// Power Mode
 typedef enum {
     ICM42605_PWR_MODE_SLEEP     = 0x00,
     ICM42605_PWR_MODE_STANDBY   = 0x04,
-    ICM42605_PWR_MODE_LOW_NOISE = 0x0F  // Both gyro and accel in low noise mode
+    ICM42605_PWR_MODE_LOW_NOISE = 0x0F
 } ICM42605_PowerMode_t;
 
+#else  // Default: LSM6DS3
+// ==================== LSM6DS3 Configuration ====================
+
+#define LSM6DS3_I2C_ADDRESS         0x6A  // 7-bit address
+#define LSM6DS3_ACC_GYRO_WHO_AM_I   0x69
+
+// Register Addresses
+#define LSM6DS3_ACC_GYRO_CTRL1_XL        0x10
+#define LSM6DS3_ACC_GYRO_CTRL2_G         0x11
+#define LSM6DS3_ACC_GYRO_CTRL3_C         0x12
+#define LSM6DS3_ACC_GYRO_WHO_AM_I_REG    0x0F
+#define LSM6DS3_ACC_GYRO_OUTX_L_XL       0x28
+#define LSM6DS3_ACC_GYRO_OUTY_L_XL       0x2A
+#define LSM6DS3_ACC_GYRO_OUTZ_L_XL       0x2C
+#define LSM6DS3_ACC_GYRO_OUTX_L_G        0x22
+#define LSM6DS3_ACC_GYRO_OUTY_L_G        0x24
+#define LSM6DS3_ACC_GYRO_OUTZ_L_G        0x26
+#define LSM6DS3_ACC_GYRO_OUT_TEMP_L      0x20
+#define LSM6DS3_ACC_GYRO_TAP_SRC         0x1C
+
+// Accelerometer FSR
+typedef enum {
+    LSM6DS3_ACC_GYRO_FS_XL_2g   = 0x00,
+    LSM6DS3_ACC_GYRO_FS_XL_4g   = 0x08,
+    LSM6DS3_ACC_GYRO_FS_XL_8g   = 0x0C,
+    LSM6DS3_ACC_GYRO_FS_XL_16g  = 0x04,
+} LSM6DS3_ACC_GYRO_FS_XL_t;
+
+#define LSM6DS3_ACC_GYRO_FS_XL_MASK  0x0C
+
+// Gyroscope FSR
+typedef enum {
+    LSM6DS3_ACC_GYRO_FS_G_125dps   = 0x02,
+    LSM6DS3_ACC_GYRO_FS_G_245dps   = 0x00,
+    LSM6DS3_ACC_GYRO_FS_G_500dps   = 0x04,
+    LSM6DS3_ACC_GYRO_FS_G_1000dps  = 0x08,
+    LSM6DS3_ACC_GYRO_FS_G_2000dps  = 0x0C,
+} LSM6DS3_ACC_GYRO_FS_G_t;
+
+#define LSM6DS3_ACC_GYRO_FS_G_MASK  0x0C
+
+// Accelerometer ODR
+typedef enum {
+    LSM6DS3_ACC_GYRO_ODR_XL_POWER_DOWN  = 0x00,
+    LSM6DS3_ACC_GYRO_ODR_XL_13Hz   = 0x10,
+    LSM6DS3_ACC_GYRO_ODR_XL_26Hz   = 0x20,
+    LSM6DS3_ACC_GYRO_ODR_XL_52Hz   = 0x30,
+    LSM6DS3_ACC_GYRO_ODR_XL_104Hz  = 0x40,
+    LSM6DS3_ACC_GYRO_ODR_XL_208Hz  = 0x50,
+    LSM6DS3_ACC_GYRO_ODR_XL_416Hz  = 0x60,
+    LSM6DS3_ACC_GYRO_ODR_XL_833Hz  = 0x70,
+    LSM6DS3_ACC_GYRO_ODR_XL_1660Hz = 0x80,
+} LSM6DS3_ACC_GYRO_ODR_XL_t;
+
+#define LSM6DS3_ACC_GYRO_ODR_XL_MASK  0xF0
+
+// Gyroscope ODR
+typedef enum {
+    LSM6DS3_ACC_GYRO_ODR_G_POWER_DOWN  = 0x00,
+    LSM6DS3_ACC_GYRO_ODR_G_13Hz = 0x10,
+    LSM6DS3_ACC_GYRO_ODR_G_26Hz = 0x20,
+    LSM6DS3_ACC_GYRO_ODR_G_52Hz = 0x30,
+    LSM6DS3_ACC_GYRO_ODR_G_104Hz = 0x40,
+    LSM6DS3_ACC_GYRO_ODR_G_208Hz = 0x50,
+    LSM6DS3_ACC_GYRO_ODR_G_416Hz = 0x60,
+    LSM6DS3_ACC_GYRO_ODR_G_833Hz = 0x70,
+    LSM6DS3_ACC_GYRO_ODR_G_1660Hz = 0x80,
+} LSM6DS3_ACC_GYRO_ODR_G_t;
+
+#define LSM6DS3_ACC_GYRO_ODR_G_MASK  0xF0
+
+// Block Data Update
+typedef enum {
+    LSM6DS3_ACC_GYRO_BDU_CONTINUOS = 0x00,
+    LSM6DS3_ACC_GYRO_BDU_ENABLED   = 0x40,
+} LSM6DS3_ACC_GYRO_BDU_t;
+
+#define LSM6DS3_ACC_GYRO_BDU_MASK  0x40
+
+// Sensitivity Constants
+#define LSM6DS3_ACCEL_SENS_2G       0.061f
+#define LSM6DS3_ACCEL_SENS_4G       0.122f
+#define LSM6DS3_ACCEL_SENS_8G       0.244f
+#define LSM6DS3_ACCEL_SENS_16G      0.488f
+
+#define LSM6DS3_GYRO_SENS_125DPS    4.375f
+#define LSM6DS3_GYRO_SENS_245DPS    8.750f
+#define LSM6DS3_GYRO_SENS_500DPS    17.500f
+#define LSM6DS3_GYRO_SENS_1000DPS   35.000f
+#define LSM6DS3_GYRO_SENS_2000DPS   70.000f
+
+// Data Structures
+typedef struct {
+    float x;
+    float y;
+    float z;
+} LSM6DS3_Axes_t;
+
+typedef struct {
+    int16_t x;
+    int16_t y;
+    int16_t z;
+} LSM6DS3_AxesRaw_t;
+
+#endif  // IMU_USE_ICM42605
+
 //====================================================================
-// EXTERNAL VARIABLES
+// EXTERNAL VARIABLES (Common to all ICs)
 //====================================================================
 extern float IMU_Accel[3];      // Accelerometer data in m/s² [X, Y, Z]
 extern float IMU_Gyro[3];       // Gyroscope data in rad/s [X, Y, Z]
-extern float IMU_Gyro_DPS[3];   // Gyroscope data in °/s [X, Y, Z] (for debugging)
+extern float IMU_Gyro_DPS[3];   // Gyroscope data in °/s [X, Y, Z]
 extern float IMU_Temp;          // Temperature in °C
 
 //====================================================================
-// FUNCTION DECLARATIONS
+// FUNCTION DECLARATIONS (Common API)
 //====================================================================
 
 /**
- * @brief Initialize the ICM-42605 IMU sensor
- * @note Sets up I2C communication, configures power mode, FSR, and ODR
+ * @brief Initialize the IMU sensor
  */
 void initIMU(void);
 
 /**
  * @brief Read all sensor values from the IMU
- * @note Updates IMU_Accel[], IMU_Gyro[], IMU_Gyro_DPS[], and IMU_Temp
  */
 void refreshIMUValues(void);
 
 /**
- * @brief Dynamically calibrate IMU full-scale ranges based on current readings
- * @note Only active if IMU_DYNAMIC_FSR is defined
+ * @brief Dynamically calibrate IMU full-scale ranges
  */
 void calibrateIMU(void);
 
 /**
- * @brief Check IMU communication by reading WHO_AM_I register
- * @return WHO_AM_I register value (should be 0x42 for ICM-42605)
+ * @brief Check IMU communication
+ * @return WHO_AM_I value
  */
 uint8_t checkIMU(void);
 
