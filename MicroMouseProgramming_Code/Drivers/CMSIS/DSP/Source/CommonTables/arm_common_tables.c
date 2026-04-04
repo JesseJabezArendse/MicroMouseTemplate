@@ -54693,7 +54693,7 @@ const q15_t __ALIGNED(4) realCoefBQ15[8192] = {
   (q31_t)0x6251d298, (q31_t)0xae0a8916, (q31_t)0x624dcc8d, (q31_t)0xae05b5aa, (q31_t)0x6249c645, (q31_t)0xae00e271, (q31_t)0x6245bfc0, (q31_t)0xadfc0f6a,
   (q31_t)0x6241b8ff, (q31_t)0xadf73c96, (q31_t)0x623db202, (q31_t)0xadf269f4, (q31_t)0x6239aac7, (q31_t)0xaded9785, (q31_t)0x6235a351, (q31_t)0xade8c548,
   (q31_t)0x62319b9d, (q31_t)0xade3f33e, (q31_t)0x622d93ad, (q31_t)0xaddf2167, (q31_t)0x62298b81, (q31_t)0xadda4fc3, (q31_t)0x62258317, (q31_t)0xadd57e51,
-  (q31_t)0x62217a72, (q31_t)0xadd0ad12, (q31_t)0x621d7190, (q31_t)0xadcbdc05, (q31_t)0x62196871, (q31_t)0xadc70b2c, (q31_t)0x62155f16, (q31_t)0xadc13a85,
+  (q31_t)0x62217a72, (q31_t)0xadd0ad12, (q31_t)0x621d7190, (q31_t)0xadcbdc05, (q31_t)0x62196871, (q31_t)0xadc70b2c, (q31_t)0x62155f16, (q31_t)0xadc23a85,
   (q31_t)0x6211557e, (q31_t)0xadbd6a10, (q31_t)0x620d4baa, (q31_t)0xadb899cf, (q31_t)0x62094199, (q31_t)0xadb3c9c0, (q31_t)0x6205374c, (q31_t)0xadaef9e4,
   (q31_t)0x62012cc2, (q31_t)0xadaa2a3b, (q31_t)0x61fd21fc, (q31_t)0xada55ac4, (q31_t)0x61f916f9, (q31_t)0xada08b80, (q31_t)0x61f50bba, (q31_t)0xad9bbc70,
   (q31_t)0x61f1003f, (q31_t)0xad96ed92, (q31_t)0x61ecf487, (q31_t)0xad921ee6, (q31_t)0x61e8e893, (q31_t)0xad8d506e, (q31_t)0x61e4dc62, (q31_t)0xad888229,
