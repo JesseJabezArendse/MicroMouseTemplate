@@ -76,56 +76,78 @@ void initUSB(void);
 void refreshUSB(void);
 void logSelectedVariables(void);
 void updateMicroMouse(void);
-void restartI2C(void);
+void restartI2C(I2C_HandleTypeDef *hi2c);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define XSHUT3_Pin GPIO_PIN_3
-#define XSHUT3_GPIO_Port GPIOE
-#define SW1_Pin GPIO_PIN_6
-#define SW1_GPIO_Port GPIOE
-#define LED0_Pin GPIO_PIN_13
-#define LED0_GPIO_Port GPIOC
-#define LED1_Pin GPIO_PIN_14
-#define LED1_GPIO_Port GPIOC
-#define LED2_Pin GPIO_PIN_15
-#define LED2_GPIO_Port GPIOC
-#define ADC_MOT_RS_Pin GPIO_PIN_3
-#define ADC_MOT_RS_GPIO_Port GPIOA
-#define ADC_DOWN_RS_Pin GPIO_PIN_4
-#define ADC_DOWN_RS_GPIO_Port GPIOC
-#define ADC_DOWN_LS_Pin GPIO_PIN_5
-#define ADC_DOWN_LS_GPIO_Port GPIOC
-#define ADC_MOT_LS_Pin GPIO_PIN_0
-#define ADC_MOT_LS_GPIO_Port GPIOB
-#define SW2_Pin GPIO_PIN_2
-#define SW2_GPIO_Port GPIOB
-#define LED_MOT_LS_Pin GPIO_PIN_9
-#define LED_MOT_LS_GPIO_Port GPIOE
-#define XSHUT1_Pin GPIO_PIN_10
-#define XSHUT1_GPIO_Port GPIOE
-#define LED_DOWN_LS_Pin GPIO_PIN_11
-#define LED_DOWN_LS_GPIO_Port GPIOE
-#define LED_MOT_RS_Pin GPIO_PIN_13
-#define LED_MOT_RS_GPIO_Port GPIOE
-#define LED_DOWN_RS_Pin GPIO_PIN_14
-#define LED_DOWN_RS_GPIO_Port GPIOE
-#define XSHUT2_Pin GPIO_PIN_15
-#define XSHUT2_GPIO_Port GPIOE
-#define MOT_RIGHT_FWD_Pin GPIO_PIN_12
-#define MOT_RIGHT_FWD_GPIO_Port GPIOD
-#define MOT_RIGHT_BWD_Pin GPIO_PIN_13
-#define MOT_RIGHT_BWD_GPIO_Port GPIOD
-#define MOT_LEFT_FWD_Pin GPIO_PIN_8
+
+// GPIOA Pins
+#define ADC_MOT_RS_Pin         GPIO_PIN_3
+#define ADC_MOT_RS_GPIO_Port   GPIOA
+
+// GPIOB Pins
+#define ADC_MOT_LS_Pin         GPIO_PIN_0
+#define ADC_MOT_LS_GPIO_Port   GPIOB
+#define CTRL_LEDS_Pin          GPIO_PIN_3
+#define CTRL_LEDS_GPIO_Port    GPIOB
+#define IMU_INT_Pin            GPIO_PIN_5
+#define IMU_INT_GPIO_Port      GPIOB
+#define SW2_Pin                GPIO_PIN_2
+#define SW2_GPIO_Port          GPIOB
+
+// GPIOC Pins
+#define ADC_DOWN_RS_Pin        GPIO_PIN_4
+#define ADC_DOWN_RS_GPIO_Port  GPIOC
+#define ADC_DOWN_LS_Pin        GPIO_PIN_5
+#define ADC_DOWN_LS_GPIO_Port  GPIOC
+#define MOT_LEFT_FWD_Pin       GPIO_PIN_8
 #define MOT_LEFT_FWD_GPIO_Port GPIOC
-#define MOT_LEFT_BWD_Pin GPIO_PIN_9
+#define MOT_LEFT_BWD_Pin       GPIO_PIN_9
 #define MOT_LEFT_BWD_GPIO_Port GPIOC
-#define MOTOR_EN_Pin GPIO_PIN_7
-#define MOTOR_EN_GPIO_Port GPIOD
-#define CTRL_LEDS_Pin GPIO_PIN_3
-#define CTRL_LEDS_GPIO_Port GPIOB
-#define MPU6050_INT_Pin GPIO_PIN_5
-#define MPU6050_INT_GPIO_Port GPIOB
+#define XSHUT6_Pin             GPIO_PIN_11
+#define XSHUT6_GPIO_Port       GPIOC
+#define LED0_Pin               GPIO_PIN_13
+#define LED0_GPIO_Port         GPIOC
+#define LED1_Pin               GPIO_PIN_14
+#define LED1_GPIO_Port         GPIOC
+#define LED2_Pin               GPIO_PIN_15
+#define LED2_GPIO_Port         GPIOC
+
+// GPIOD Pins
+#define MOTOR_EN_Pin           GPIO_PIN_7
+#define MOTOR_EN_GPIO_Port     GPIOD
+#define MOT_RIGHT_FWD_Pin      GPIO_PIN_12
+#define MOT_RIGHT_FWD_GPIO_Port GPIOD
+#define MOT_RIGHT_BWD_Pin      GPIO_PIN_13
+#define MOT_RIGHT_BWD_GPIO_Port GPIOD
+
+// GPIOE Pins
+#define XSHUT5_Pin             GPIO_PIN_2
+#define XSHUT5_GPIO_Port       GPIOE
+#define XSHUT3_Pin             GPIO_PIN_3
+#define XSHUT3_GPIO_Port       GPIOE
+#define SW1_Pin                GPIO_PIN_6
+#define SW1_GPIO_Port          GPIOE
+#define XSHUT1_Pin             GPIO_PIN_8
+#define XSHUT1_GPIO_Port       GPIOE
+#define LED_MOT_LS_Pin         GPIO_PIN_9
+#define LED_MOT_LS_GPIO_Port   GPIOE
+#define XSHUT4_Pin             GPIO_PIN_10
+#define XSHUT4_GPIO_Port       GPIOE
+#define LED_DOWN_LS_Pin        GPIO_PIN_11
+#define LED_DOWN_LS_GPIO_Port  GPIOE
+#define LED_MOT_RS_Pin         GPIO_PIN_13
+#define LED_MOT_RS_GPIO_Port   GPIOE
+#define LED_DOWN_RS_Pin        GPIO_PIN_14
+#define LED_DOWN_RS_GPIO_Port  GPIOE
+#define XSHUT2_Pin             GPIO_PIN_15
+#define XSHUT2_GPIO_Port       GPIOE
+#define XSHUT7_Pin             GPIO_PIN_3
+#define XSHUT7_GPIO_Port       GPIOD
+#define XSHUT8_Pin             GPIO_PIN_8
+#define XSHUT8_GPIO_Port       GPIOA
+#define XSHUT9_Pin             GPIO_PIN_0
+#define XSHUT9_GPIO_Port       GPIOE
 
 /* USER CODE BEGIN Private defines */
 

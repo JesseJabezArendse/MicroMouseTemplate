@@ -17,8 +17,12 @@ import time
 
 # Configuration
 SERIAL_PORT = 'COM3'  # Change this to your serial port
-SERIAL_BAUD = 115200
+SERIAL_BAUD = 1843200
 MAX_DATA_POINTS = 100
+
+# Serial packet constants (packet = 3-byte header 'J_A' + 216 bytes payload = 219 total)
+PACKET_HEADER = b'J_A'
+PACKET_SIZE = 219
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -37,8 +41,14 @@ class MicroMouseData:
         
         # Sensor data
         self.tof_left = 0
-        self.tof_center = 0
+        self.tof_front_left = 0
+        self.tof_centre = 0
+        self.tof_front_right = 0
         self.tof_right = 0
+        self.tof_mb_back = 0
+        self.tof_mb_front = 0
+        self.tof_mb_front_left = 0
+        self.tof_mb_front_right = 0
         self.imu_accel = [0, 0, 0]
         self.imu_gyro = [0, 0, 0]
         self.imu_temp = 0
@@ -57,8 +67,14 @@ class MicroMouseData:
         self.history = {
             'timestamps': deque(maxlen=MAX_DATA_POINTS),
             'tof_left': deque(maxlen=MAX_DATA_POINTS),
-            'tof_center': deque(maxlen=MAX_DATA_POINTS),
+            'tof_front_left': deque(maxlen=MAX_DATA_POINTS),
+            'tof_centre': deque(maxlen=MAX_DATA_POINTS),
+            'tof_front_right': deque(maxlen=MAX_DATA_POINTS),
             'tof_right': deque(maxlen=MAX_DATA_POINTS),
+            'tof_mb_back': deque(maxlen=MAX_DATA_POINTS),
+            'tof_mb_front': deque(maxlen=MAX_DATA_POINTS),
+            'tof_mb_front_left': deque(maxlen=MAX_DATA_POINTS),
+            'tof_mb_front_right': deque(maxlen=MAX_DATA_POINTS),
             'battery_voltage': deque(maxlen=MAX_DATA_POINTS),
             'imu_accel_x': deque(maxlen=MAX_DATA_POINTS),
             'imu_gyro_z': deque(maxlen=MAX_DATA_POINTS),
@@ -87,22 +103,57 @@ def disconnect_serial():
         logger.info("Disconnected from serial")
 
 def parse_serial_data(raw_data):
-    """Parse binary data from MicroMouse"""
+    """Parse 171-byte binary packet from MicroMouse (header 'J_A' + payload)"""
     try:
-        # Expected format: TOF values, IMU values, battery, ADC values
-        # This is a generic parser - adjust based on your actual protocol
-        if len(raw_data) >= 30:
-            with data.lock:
-                # Parse TOF sensors (3 uint32 values = 12 bytes)
-                data.tof_left = struct.unpack('<I', raw_data[0:4])[0]
-                data.tof_center = struct.unpack('<I', raw_data[4:8])[0]
-                data.tof_right = struct.unpack('<I', raw_data[8:12])[0]
-                
-                # Add to history
-                data.history['timestamps'].append(datetime.now().isoformat())
-                data.history['tof_left'].append(data.tof_left)
-                data.history['tof_center'].append(data.tof_center)
-                data.history['tof_right'].append(data.tof_right)
+        if len(raw_data) < PACKET_SIZE or raw_data[0:3] != PACKET_HEADER:
+            return
+        with data.lock:
+            # IMU (offsets 11-38, 7 x float32)
+            data.imu_accel[0] = struct.unpack('<f', raw_data[11:15])[0]
+            data.imu_accel[1] = struct.unpack('<f', raw_data[15:19])[0]
+            data.imu_accel[2] = struct.unpack('<f', raw_data[19:23])[0]
+            data.imu_gyro[0]  = struct.unpack('<f', raw_data[23:27])[0]
+            data.imu_gyro[1]  = struct.unpack('<f', raw_data[27:31])[0]
+            data.imu_gyro[2]  = struct.unpack('<f', raw_data[31:35])[0]
+            data.imu_temp     = struct.unpack('<f', raw_data[35:39])[0]
+
+            # ToF sensors (offset 39, 9 x 16 bytes: Distance(4), Ambient(4), Signal(4), Status(4))
+            data.tof_left          = struct.unpack('<I', raw_data[39:43])[0]
+            data.tof_front_left    = struct.unpack('<I', raw_data[55:59])[0]
+            data.tof_centre        = struct.unpack('<I', raw_data[71:75])[0]
+            data.tof_front_right   = struct.unpack('<I', raw_data[87:91])[0]
+            data.tof_right         = struct.unpack('<I', raw_data[103:107])[0]
+            data.tof_mb_back       = struct.unpack('<I', raw_data[119:123])[0]
+            data.tof_mb_front      = struct.unpack('<I', raw_data[135:139])[0]
+            data.tof_mb_front_left = struct.unpack('<I', raw_data[151:155])[0]
+            data.tof_mb_front_right= struct.unpack('<I', raw_data[167:171])[0]
+
+            # ADC (offset 183, 5 x uint16 each sent twice, take first copy)
+            data.adc_values[0] = struct.unpack('<H', raw_data[183:185])[0]
+            data.adc_values[1] = struct.unpack('<H', raw_data[187:189])[0]
+            data.adc_values[2] = struct.unpack('<H', raw_data[191:193])[0]
+            data.adc_values[3] = struct.unpack('<H', raw_data[195:197])[0]
+            data.adc_values[4] = struct.unpack('<H', raw_data[199:201])[0]
+
+            # Battery (offset 203: Vbattery, Vshunt, Current, Power as int16 in mV/mA; batteryLife as int8)
+            data.battery_voltage = struct.unpack('<h', raw_data[203:205])[0] / 1000.0
+            data.battery_current = struct.unpack('<h', raw_data[207:209])[0] / 1000.0
+            data.battery_pct     = struct.unpack('<b', raw_data[211:212])[0]
+
+            # History
+            data.history['timestamps'].append(datetime.now().isoformat())
+            data.history['tof_left'].append(data.tof_left)
+            data.history['tof_front_left'].append(data.tof_front_left)
+            data.history['tof_centre'].append(data.tof_centre)
+            data.history['tof_front_right'].append(data.tof_front_right)
+            data.history['tof_right'].append(data.tof_right)
+            data.history['tof_mb_back'].append(data.tof_mb_back)
+            data.history['tof_mb_front'].append(data.tof_mb_front)
+            data.history['tof_mb_front_left'].append(data.tof_mb_front_left)
+            data.history['tof_mb_front_right'].append(data.tof_mb_front_right)
+            data.history['battery_voltage'].append(data.battery_voltage)
+            data.history['imu_accel_x'].append(data.imu_accel[0])
+            data.history['imu_gyro_z'].append(data.imu_gyro[2])
     except Exception as e:
         logger.warning(f"Error parsing data: {e}")
 
@@ -115,13 +166,17 @@ def read_serial_thread():
                 chunk = data.serial_connection.read(data.serial_connection.in_waiting)
                 buffer += chunk
                 
-                # Process complete messages (customize delimiters as needed)
-                while len(buffer) > 0:
-                    if len(buffer) >= 32:
-                        parse_serial_data(buffer[:32])
-                        buffer = buffer[32:]
-                    else:
+                while True:
+                    idx = buffer.find(PACKET_HEADER)
+                    if idx == -1:
+                        buffer = buffer[-2:] if len(buffer) >= 2 else buffer
                         break
+                    if idx > 0:
+                        buffer = buffer[idx:]
+                    if len(buffer) < PACKET_SIZE:
+                        break
+                    parse_serial_data(buffer[:PACKET_SIZE])
+                    buffer = buffer[PACKET_SIZE:]
         except Exception as e:
             logger.error(f"Serial read error: {e}")
             data.is_connected = False
@@ -170,8 +225,14 @@ def get_status():
             'sensors': {
                 'tof': {
                     'left': data.tof_left,
-                    'center': data.tof_center,
+                    'front_left': data.tof_front_left,
+                    'centre': data.tof_centre,
+                    'front_right': data.tof_front_right,
                     'right': data.tof_right,
+                    'mb_back': data.tof_mb_back,
+                    'mb_front': data.tof_mb_front,
+                    'mb_front_left': data.tof_mb_front_left,
+                    'mb_front_right': data.tof_mb_front_right,
                 },
                 'imu': {
                     'accel': data.imu_accel,
@@ -202,8 +263,14 @@ def get_history():
         return jsonify({
             'timestamps': list(data.history['timestamps']),
             'tof_left': list(data.history['tof_left']),
-            'tof_center': list(data.history['tof_center']),
+            'tof_front_left': list(data.history['tof_front_left']),
+            'tof_centre': list(data.history['tof_centre']),
+            'tof_front_right': list(data.history['tof_front_right']),
             'tof_right': list(data.history['tof_right']),
+            'tof_mb_back': list(data.history['tof_mb_back']),
+            'tof_mb_front': list(data.history['tof_mb_front']),
+            'tof_mb_front_left': list(data.history['tof_mb_front_left']),
+            'tof_mb_front_right': list(data.history['tof_mb_front_right']),
             'battery_voltage': list(data.history['battery_voltage']),
             'imu_accel_x': list(data.history['imu_accel_x']),
             'imu_gyro_z': list(data.history['imu_gyro_z']),

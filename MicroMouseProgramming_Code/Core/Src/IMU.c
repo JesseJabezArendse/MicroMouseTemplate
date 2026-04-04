@@ -26,6 +26,7 @@ float IMU_Accel[3] = {0.0f, 0.0f, 0.0f};
 float IMU_Gyro[3] = {0.0f, 0.0f, 0.0f};
 float IMU_Gyro_DPS[3] = {0.0f, 0.0f, 0.0f};
 float IMU_Temp = 0.0f;
+static uint8_t imu_initialized = 0;
 
 //====================================================================
 #ifdef IMU_USE_ICM42605
@@ -54,7 +55,7 @@ static uint8_t readByte(uint8_t regAddr) {
     HAL_I2C_Mem_Read(&hi2c2, (ICM42605_I2C_ADDRESS << 1), regAddr, 1, &value, 1, I2C_TIMEOUT);
     
     if (hi2c2.ErrorCode != HAL_I2C_ERROR_NONE) {
-        restartI2C();
+        restartI2C(&hi2c2);
     }
     return value;
 }
@@ -64,7 +65,7 @@ static int16_t readWord(uint8_t regAddr) {
     HAL_I2C_Mem_Read(&hi2c2, (ICM42605_I2C_ADDRESS << 1), regAddr, 1, buffer, 2, I2C_TIMEOUT);
     
     if (hi2c2.ErrorCode != HAL_I2C_ERROR_NONE) {
-        restartI2C();
+        restartI2C(&hi2c2);
     }
     
     return (int16_t)((buffer[0] << 8) | buffer[1]);
@@ -139,9 +140,11 @@ void initIMU(void) {
     gyroSensitivity = ICM42605_GYRO_SENS_15_125DPS;
     
     HAL_Delay(10);
+    imu_initialized = 1;
 }
 
 void refreshIMUValues(void) {
+    if (!imu_initialized) { return; }
     HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
     HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
     HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);
@@ -443,9 +446,11 @@ void initIMU(void) {
     gyroSensitivity = LSM6DS3_GYRO_SENS_245DPS;
     
     HAL_Delay(10);
+    imu_initialized = 1;
 }
 
 void refreshIMUValues(void) {
+    if (!imu_initialized) { return; }
     LSM6DS3_Axes_t accelData, gyroData;
     float temp;
     

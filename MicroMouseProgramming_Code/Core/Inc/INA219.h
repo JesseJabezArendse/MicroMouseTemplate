@@ -71,14 +71,32 @@ extern I2C_HandleTypeDef hi2c1;
 #define	INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS 0x07
 
 
+enum BatteryState {Battery_START,Battery_OK, Battery_LOW}; // To help health check function sufficiently diagnose problems
+
 
 typedef struct
 {
 	I2C_HandleTypeDef 	*ina219_i2c;
 	uint8_t				Address;
-} INA219_t;
+	uint8_t				initialized;
 
-enum BatteryState {Battery_START,Battery_OK, Battery_LOW}; // To help health check function sufficiently diagnose problems
+	// Calibration
+	uint16_t			calibrationValue;
+	int16_t				currentDivider_mA;
+	int16_t				powerMultiplier_mW;
+
+	// Measurements
+	uint16_t			busVoltage_mV;
+	int16_t				shuntVoltage_mV;
+	int16_t				current_mA;
+	uint16_t			power_mW;
+	int8_t				batteryLife;
+	enum BatteryState	batteryState;
+
+	// Energy tracking
+	float				totalPowerUsed;
+	bool				isFirst;
+} INA219_t;
 
 
 int INA219_GetDeltaTime_ms();

@@ -36,7 +36,7 @@ uint16_t Read16(INA219_t *ina219, uint8_t Register)
 
     // Check for I2C errors after all operations
     if (ina219->ina219_i2c->ErrorCode != HAL_I2C_ERROR_NONE) {
-        restartI2C();
+        restartI2C(ina219->ina219_i2c);
     }
 
 	return ((Value[0] << 8) | Value[1]);
@@ -404,12 +404,13 @@ uint8_t initINA219()
 	ina219_CurrentDivider_mA = 0;
 	ina219_PowerMultiplier_mW = 0;
 
-	uint8_t ina219_isReady = HAL_I2C_IsDeviceReady(ina219.ina219_i2c, (ina219.Address << 1), 100, HAL_MAX_DELAY);
+	uint8_t ina219_isReady = HAL_I2C_IsDeviceReady(ina219.ina219_i2c, (ina219.Address << 1), 3, 10);
 
 	if(ina219_isReady == HAL_OK)
 	{
 		INA219_Reset(&ina219);
 		INA219_setCalibration_MaxRes(&ina219);
+		ina219.initialized = 1;
 		return 1;
 	}
 
@@ -421,14 +422,20 @@ uint8_t initINA219()
 
 void refreshINA219Values()
 {
+	if (!ina219.initialized) { return; }
 	Vbattery = INA219_ReadBusVoltage(&ina219);
 	batteryLife = GetBatteryLife(Vbattery, 4200.0f, 3000.0f);
 
-	
 	Vshunt = INA219_ReadShuntVolage(&ina219);
 	Current = INA219_ReadCurrent(&ina219);
 	Power = INA219_ReadPower(&ina219);
-	
+
+	ina219.busVoltage_mV  = Vbattery;
+	ina219.shuntVoltage_mV = Vshunt;
+	ina219.current_mA     = Current;
+	ina219.power_mW       = Power;
+	ina219.batteryLife    = batteryLife;
+
 	__disable_irq();
 
 

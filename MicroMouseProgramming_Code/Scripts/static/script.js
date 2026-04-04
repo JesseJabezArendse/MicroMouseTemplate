@@ -120,8 +120,11 @@ function updateStatus() {
 function updateSensors(sensors) {
     // TOF sensors
     document.getElementById('tof-left').textContent = sensors.tof.left.toFixed(0);
-    document.getElementById('tof-center').textContent = sensors.tof.center.toFixed(0);
+    document.getElementById('tof-front-left').textContent = sensors.tof.front_left.toFixed(0);
+    document.getElementById('tof-centre').textContent = sensors.tof.centre.toFixed(0);
+    document.getElementById('tof-front-right').textContent = sensors.tof.front_right.toFixed(0);
     document.getElementById('tof-right').textContent = sensors.tof.right.toFixed(0);
+    document.getElementById('tof-back').textContent = sensors.tof.back.toFixed(0);
 
     // IMU
     document.getElementById('imu-ax').textContent = sensors.imu.accel[0].toFixed(2);
@@ -241,10 +244,24 @@ function updateCharts(data) {
                     },
                     {
                         x: history.timestamps,
-                        y: history.tof_center,
-                        name: 'Center',
+                        y: history.tof_front_left,
+                        name: 'Front Left',
+                        mode: 'lines',
+                        line: { color: '#e67e22' }
+                    },
+                    {
+                        x: history.timestamps,
+                        y: history.tof_centre,
+                        name: 'Centre',
                         mode: 'lines',
                         line: { color: '#3498db' }
+                    },
+                    {
+                        x: history.timestamps,
+                        y: history.tof_front_right,
+                        name: 'Front Right',
+                        mode: 'lines',
+                        line: { color: '#9b59b6' }
                     },
                     {
                         x: history.timestamps,
@@ -252,6 +269,13 @@ function updateCharts(data) {
                         name: 'Right',
                         mode: 'lines',
                         line: { color: '#2ecc71' }
+                    },
+                    {
+                        x: history.timestamps,
+                        y: history.tof_back,
+                        name: 'Back',
+                        mode: 'lines',
+                        line: { color: '#95a5a6' }
                     }
                 ];
                 Plotly.react('tof-chart', tofData, tofChartLayout, { responsive: true });

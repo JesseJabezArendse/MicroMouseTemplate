@@ -255,15 +255,19 @@ typedef enum { VcselPeriodPreRange, VcselPeriodFinalRange }vcselPeriodType;
 
 // Additional info for one measurement
 typedef struct {
-  uint8_t Address;       /*!< I2C Address */
-  uint32_t Distance;     /*!< Distance in millimeters */
-  uint32_t Status;       /*!< OK: 0, NOK: !0 */
-  uint16_t Ambient;      /*!< Ambient Counting Rate [kcps/spad], fixpoint9.7 */
-  uint16_t Signal;       /*!< Signal Counting Rate [kcps/spad], fixpoint9.7 */
-  uint16_t rawDistance;  /*!< Uncorrected distance [mm] */
-  uint16_t spadCnt;      /*!< Effective SPAD return count, fixpoint8.8 */
-  uint8_t rangeStatus;   /*!< Ranging status (0-15) */
+  uint8_t Address;             /*!< I2C Address */
+  I2C_HandleTypeDef *I2Cx;    /*!< I2C peripheral handle */
+  GPIO_TypeDef *XSHUT_Port;   /*!< XSHUT GPIO port */
+  uint16_t XSHUT_Pin;         /*!< XSHUT GPIO pin */
+  uint32_t Distance;           /*!< Distance in millimeters */
+  uint32_t Status;             /*!< OK: 0, NOK: !0 */
+  uint16_t Ambient;            /*!< Ambient Counting Rate [kcps/spad], fixpoint9.7 */
+  uint16_t Signal;             /*!< Signal Counting Rate [kcps/spad], fixpoint9.7 */
+  uint16_t rawDistance;        /*!< Uncorrected distance [mm] */
+  uint16_t spadCnt;            /*!< Effective SPAD return count, fixpoint8.8 */
+  uint8_t rangeStatus;         /*!< Ranging status (0-15) */
   uint32_t timingBudget;
+  uint8_t initialized;          /*!< 1 if sensor has been successfully initialized */
 } VL53L0_t;
 
 //------------------------------------------------------------

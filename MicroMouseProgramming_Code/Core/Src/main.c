@@ -121,9 +121,15 @@ extern float IMU_Accel[3];
 extern float IMU_Gyro[3];
 extern float IMU_Temp;
 
-extern VL53L0_t TOF_left_result;
-extern VL53L0_t TOF_centre_result;
-extern VL53L0_t TOF_right_result;
+extern VL53L0_t TOF_sb_left_result;
+extern VL53L0_t TOF_sb_front_result;
+extern VL53L0_t TOF_sb_right_result;
+extern VL53L0_t TOF_sb_front_left_result;
+extern VL53L0_t TOF_sb_front_right_result;
+extern VL53L0_t TOF_mb_back_result;
+extern VL53L0_t TOF_mb_front_result;
+extern VL53L0_t TOF_mb_front_left_result;
+extern VL53L0_t TOF_mb_front_right_result;
 
 extern char oled_string1[18];
 extern char oled_string2[18];
@@ -224,18 +230,30 @@ void sendToSimulink(){
 
 
   // TOF
-    HAL_UART_Transmit(&huart1, &(TOF_left_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &(TOF_left_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &(TOF_left_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &(TOF_left_result.Status  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_centre_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_centre_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_centre_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_centre_result.Status  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_right_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_right_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_right_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_right_result.Status  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, &(TOF_sb_left_result.Distance)  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, &(TOF_sb_left_result.Ambient )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, &(TOF_sb_left_result.Signal  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, &(TOF_sb_left_result.Status  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_left_result.Distance)  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_left_result.Ambient )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_left_result.Signal  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_left_result.Status  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_result.Distance)  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_result.Ambient )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_result.Signal  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_result.Status  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_right_result.Distance)  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_right_result.Ambient )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_right_result.Signal  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_right_result.Status  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_right_result.Distance)  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_right_result.Ambient )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_right_result.Signal  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_sb_right_result.Status  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_mb_back_result.Distance)  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_mb_back_result.Ambient )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_mb_back_result.Signal  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  &(TOF_mb_back_result.Status  )  , 4 , HAL_MAX_DELAY);
 
     // VBAT, MOT_RS , DOWN_RS , DOWN_LS , MOT_LS
     HAL_UART_Transmit(&huart1,  &(ADCs[0]  )  , 2 , HAL_MAX_DELAY);
@@ -313,18 +331,15 @@ uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAd
     return found;
 }
 
-void restartI2C(){
+void restartI2C(I2C_HandleTypeDef *hi2c){
   #ifdef I2C_SAFE_RESTART
     TIM3->CCR4 = 0;
     TIM3->CCR3 = 0;
     TIM4->CCR2 = 0;
     TIM4->CCR1 = 0;
   #endif
-  HAL_I2C_DeInit(&hi2c1);
-  HAL_I2C_Init(&hi2c1);
-  HAL_I2C_DeInit(&hi2c2);
-  HAL_I2C_Init(&hi2c2);
-  // Attempt to clear I2C bus error (BERR)}
+  HAL_I2C_DeInit(hi2c);
+  HAL_I2C_Init(hi2c);
 }
 // Logging
 
@@ -345,8 +360,11 @@ typedef struct __attribute__((packed)) {
     int8_t Motor_Left;
     int8_t Motor_Right;
     uint16_t Distance_Left;
+    uint16_t Distance_Front_Left;
     uint16_t Distance_Centre;
+    uint16_t Distance_Front_Right;
     uint16_t Distance_Right;
+    uint16_t Distance_Back;
     uint8_t PHOTO_DOWN_LS;     // Voltage 0-3.3V mapped to 0-255
     uint8_t PHOTO_DOWN_RS;
     uint8_t PHOTO_MOT_LS;
@@ -625,9 +643,12 @@ void refreshLoggedData() {
     log.LEDs = (LED[0] & 0x01) | ((LED[1] & 0x01) << 1) | ((LED[2] & 0x01) << 2);
     log.Motor_Left = MOTOR_LS;
     log.Motor_Right = MOTOR_RS;
-    log.Distance_Left = (uint16_t)(TOF_left_result.Distance > 4095 ? 4095 : TOF_left_result.Distance);
-    log.Distance_Centre = (uint16_t)(TOF_centre_result.Distance > 4095 ? 4095 : TOF_centre_result.Distance);
-    log.Distance_Right = (uint16_t)(TOF_right_result.Distance > 4095 ? 4095 : TOF_right_result.Distance);
+    log.Distance_Left = (uint16_t)(TOF_sb_left_result.Distance > 4095 ? 4095 : TOF_sb_left_result.Distance);
+    log.Distance_Front_Left = (uint16_t)(TOF_sb_front_left_result.Distance > 4095 ? 4095 : TOF_sb_front_left_result.Distance);
+    log.Distance_Centre = (uint16_t)(TOF_sb_front_result.Distance > 4095 ? 4095 : TOF_sb_front_result.Distance);
+    log.Distance_Front_Right = (uint16_t)(TOF_sb_front_right_result.Distance > 4095 ? 4095 : TOF_sb_front_right_result.Distance);
+    log.Distance_Right = (uint16_t)(TOF_sb_right_result.Distance > 4095 ? 4095 : TOF_sb_right_result.Distance);
+    log.Distance_Back = (uint16_t)(TOF_mb_back_result.Distance > 4095 ? 4095 : TOF_mb_back_result.Distance);
     // Convert ADC (0-65535) to voltage uint8 (0-255 representing 0-3.3V)
     log.PHOTO_DOWN_LS = (uint8_t)((V_PHOTO_DOWN_LS * 255UL) / 65535UL);
     log.PHOTO_DOWN_RS = (uint8_t)((V_PHOTO_DOWN_RS * 255UL) / 65535UL);
@@ -761,6 +782,8 @@ void initMicroMouse(){
 
 bool simulink_talking = false;
 
+#define STARTUP_HOLD_MS 5000
+
 void updateMicroMouse(){
   // Motor Control
   // TIM4->CCR1 = 0;
@@ -770,12 +793,12 @@ void updateMicroMouse(){
 
   // update screen
   refreshADCs();
-  refreshScreen();
+  // refreshScreen();
 
   // Show sensor data on screen as integers, each digit explicit
-  int left_mm = (int)(TOF_left_result.Distance);
-  int centre_mm = (int)(TOF_centre_result.Distance);
-  int right_mm = (int)(TOF_right_result.Distance);
+  int left_mm = (int)(TOF_sb_left_result.Distance);
+  int centre_mm = (int)(TOF_sb_front_result.Distance);
+  int right_mm = (int)(TOF_sb_right_result.Distance);
   int accel_x = (int)(IMU_Accel[0] * 1000); // scale to show 2 decimals as int
   int accel_y = (int)(IMU_Accel[1] * 1000);
   int accel_z = (int)(IMU_Accel[2] * 1000);
@@ -792,6 +815,13 @@ void updateMicroMouse(){
   refreshTOFValues();
   refreshIMUValues();
   refreshINA219Values();
+
+  // Block motors for the first STARTUP_HOLD_MS milliseconds after boot
+  if (HAL_GetTick() < STARTUP_HOLD_MS) {
+    MOTOR_LS = 0;
+    MOTOR_RS = 0;
+  }
+
   refreshMotors();
   refreshLoggedData();
 }
@@ -836,8 +866,6 @@ void main(void)
   HAL_TIM_Base_Start_IT(&htim5);
 
   HAL_UART_Receive_DMA(&huart1,(uint8_t *) &bigBuffer, sizeof(bigBuffer));
-
-  HAL_Delay(5000);
 
   while (1)
   {
@@ -1070,7 +1098,7 @@ void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00F01A72;
+  hi2c1.Init.Timing = 0x00801A80;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -1523,7 +1551,7 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, XSHUT3_Pin|XSHUT1_Pin|XSHUT2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, XSHUT5_Pin|XSHUT3_Pin|XSHUT1_Pin|XSHUT4_Pin|XSHUT2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_SET);
@@ -1537,16 +1565,16 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(CTRL_LEDS_GPIO_Port, CTRL_LEDS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PE2 PE4 PE5 PE7
-                           PE8 PE12 PE0 PE1 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_7
-                          |GPIO_PIN_8|GPIO_PIN_12|GPIO_PIN_0|GPIO_PIN_1;
+  /*Configure GPIO pins : PE4 PE5 PE7
+                           PE12 PE1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_7
+                          |GPIO_PIN_12|GPIO_PIN_1;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : XSHUT3_Pin XSHUT1_Pin XSHUT2_Pin */
-  GPIO_InitStruct.Pin = XSHUT3_Pin|XSHUT1_Pin|XSHUT2_Pin;
+  /*Configure GPIO pins : XSHUT5_Pin XSHUT3_Pin XSHUT1_Pin XSHUT4_Pin XSHUT2_Pin */
+  GPIO_InitStruct.Pin = XSHUT5_Pin|XSHUT3_Pin|XSHUT1_Pin|XSHUT4_Pin|XSHUT2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1576,11 +1604,11 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA0 PA1 PA2 PA4
-                           PA5 PA6 PA7 PA8
+                           PA5 PA6 PA7
                            PA9 PA10 PA11 PA12
                            PA15 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_4
-                          |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8
+                          |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7
                           |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12
                           |GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
@@ -1603,11 +1631,11 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : PD8 PD9 PD10 PD11
                            PD14 PD15 PD0 PD1
-                           PD2 PD3 PD4 PD5
+                           PD2 PD4 PD5
                            PD6 */
   GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
                           |GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1
-                          |GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5
+                          |GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN_5
                           |GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -1627,13 +1655,38 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(CTRL_LEDS_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : MPU6050_INT_Pin */
-  GPIO_InitStruct.Pin = MPU6050_INT_Pin;
+  /*Configure GPIO pin : IMU_INT_Pin */
+  GPIO_InitStruct.Pin = IMU_INT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(MPU6050_INT_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(IMU_INT_GPIO_Port, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /*Configure GPIO pin Output Level - MB ToF XSHUT pins */
+  HAL_GPIO_WritePin(XSHUT7_GPIO_Port, XSHUT7_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(XSHUT8_GPIO_Port, XSHUT8_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(XSHUT9_GPIO_Port, XSHUT9_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : XSHUT7_Pin (PD3 - MB Front ToF) */
+  GPIO_InitStruct.Pin = XSHUT7_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(XSHUT7_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : XSHUT8_Pin (PA8 - MB Front Left ToF) */
+  GPIO_InitStruct.Pin = XSHUT8_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(XSHUT8_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : XSHUT9_Pin (PE0 - MB Front Right ToF) */
+  GPIO_InitStruct.Pin = XSHUT9_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(XSHUT9_GPIO_Port, &GPIO_InitStruct);
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
