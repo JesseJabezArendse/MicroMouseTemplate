@@ -98,6 +98,8 @@ typedef struct
 	bool				isFirst;
 } INA219_t;
 
+extern INA219_t ina219;
+
 
 int INA219_GetDeltaTime_ms();
 

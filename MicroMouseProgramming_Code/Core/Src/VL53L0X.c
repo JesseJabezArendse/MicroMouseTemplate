@@ -13,6 +13,7 @@
 // VL53L0X datasheet.
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "stm32l4xx_hal.h" // Change it for your requirements.
 #include "string.h"
 #include "VL53L0X.h"

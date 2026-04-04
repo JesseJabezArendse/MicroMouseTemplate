@@ -80,7 +80,7 @@ extern uint8_t readyToLog;
 /**
   * @brief This function handles Non maskable interrupt.
   */
-__attribute__((weak)) void NMI_Handler (void)
+void NMI_Handler(void)
 {
   /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
 
@@ -95,7 +95,7 @@ __attribute__((weak)) void NMI_Handler (void)
 /**
   * @brief This function handles Hard fault interrupt.
   */
-__attribute__((weak)) void HardFault_Handler (void)
+void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
   // __disable_irq();
@@ -113,7 +113,7 @@ __attribute__((weak)) void HardFault_Handler (void)
 /**
   * @brief This function handles Memory management fault.
   */
-__attribute__((weak)) void MemManage_Handler (void)
+void MemManage_Handler(void)
 {
   /* USER CODE BEGIN MemoryManagement_IRQn 0 */
 
@@ -129,7 +129,7 @@ __attribute__((weak)) void MemManage_Handler (void)
 /**
   * @brief This function handles Prefetch fault, memory access fault.
   */
-__attribute__((weak)) void BusFault_Handler (void)
+void BusFault_Handler(void)
 {
   /* USER CODE BEGIN BusFault_IRQn 0 */
 
@@ -145,7 +145,7 @@ __attribute__((weak)) void BusFault_Handler (void)
 /**
   * @brief This function handles Undefined instruction or illegal state.
   */
-__attribute__((weak)) void UsageFault_Handler (void)
+void UsageFault_Handler(void)
 {
   /* USER CODE BEGIN UsageFault_IRQn 0 */
 
@@ -160,7 +160,7 @@ __attribute__((weak)) void UsageFault_Handler (void)
 /**
   * @brief This function handles Debug monitor.
   */
-__attribute__((weak)) void DebugMon_Handler (void)
+void DebugMon_Handler(void)
 {
   /* USER CODE BEGIN DebugMonitor_IRQn 0 */
 
@@ -180,7 +180,7 @@ __attribute__((weak)) void DebugMon_Handler (void)
 /**
   * @brief This function handles Flash global interrupt.
   */
-__attribute__((weak)) void FLASH_IRQHandler (void)
+void FLASH_IRQHandler(void)
 {
   /* USER CODE BEGIN FLASH_IRQn 0 */
 
@@ -194,7 +194,7 @@ __attribute__((weak)) void FLASH_IRQHandler (void)
 /**
   * @brief This function handles RCC global interrupt.
   */
-__attribute__((weak)) void RCC_IRQHandler (void)
+void RCC_IRQHandler(void)
 {
   /* USER CODE BEGIN RCC_IRQn 0 */
 
@@ -207,7 +207,7 @@ __attribute__((weak)) void RCC_IRQHandler (void)
 /**
   * @brief This function handles DMA1 channel1 global interrupt.
   */
-__attribute__((weak)) void DMA1_Channel1_IRQHandler (void)
+void DMA1_Channel1_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
 
@@ -221,7 +221,7 @@ __attribute__((weak)) void DMA1_Channel1_IRQHandler (void)
 /**
   * @brief This function handles ADC1 and ADC2 interrupts.
   */
-__attribute__((weak)) void ADC1_2_IRQHandler (void)
+void ADC1_2_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC1_2_IRQn 0 */
 
@@ -235,7 +235,7 @@ __attribute__((weak)) void ADC1_2_IRQHandler (void)
 /**
   * @brief This function handles TIM1 trigger and commutation interrupts and TIM17 global interrupt.
   */
-__attribute__((weak)) void TIM1_TRG_COM_TIM17_IRQHandler (void)
+void TIM1_TRG_COM_TIM17_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_TRG_COM_TIM17_IRQn 0 */
 
@@ -249,7 +249,7 @@ __attribute__((weak)) void TIM1_TRG_COM_TIM17_IRQHandler (void)
 /**
   * @brief This function handles TIM3 global interrupt.
   */
-__attribute__((weak)) void TIM3_IRQHandler (void)
+void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
 
@@ -263,7 +263,7 @@ __attribute__((weak)) void TIM3_IRQHandler (void)
 /**
   * @brief This function handles TIM4 global interrupt.
   */
-__attribute__((weak)) void TIM4_IRQHandler (void)
+void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
 
@@ -277,7 +277,7 @@ __attribute__((weak)) void TIM4_IRQHandler (void)
 /**
   * @brief This function handles USART1 global interrupt.
   */
-__attribute__((weak)) void USART1_IRQHandler (void)
+void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
 
@@ -291,7 +291,7 @@ __attribute__((weak)) void USART1_IRQHandler (void)
 /**
   * @brief This function handles TIM5 global interrupt.
   */
-__attribute__((weak)) void TIM5_IRQHandler (void)
+void TIM5_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM5_IRQn 0 */
   #ifndef COMPILED_BY_SIMULINK
@@ -308,7 +308,7 @@ __attribute__((weak)) void TIM5_IRQHandler (void)
 /**
   * @brief This function handles TIM6 global interrupt, DAC channel1 and channel2 underrun error interrupts.
   */
-__attribute__((weak)) void TIM6_DAC_IRQHandler (void)
+void TIM6_DAC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
 
@@ -322,7 +322,7 @@ __attribute__((weak)) void TIM6_DAC_IRQHandler (void)
 /**
   * @brief This function handles TIM7 global interrupt.
   */
-__attribute__((weak)) void TIM7_IRQHandler (void)
+void TIM7_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM7_IRQn 0 */
   readyToLog = 1; // Set the flag to indicate that we are ready to log data
@@ -336,7 +336,7 @@ __attribute__((weak)) void TIM7_IRQHandler (void)
 /**
   * @brief This function handles DMA2 channel6 global interrupt.
   */
-__attribute__((weak)) void DMA2_Channel6_IRQHandler (void)
+void DMA2_Channel6_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA2_Channel6_IRQn 0 */
 
@@ -350,7 +350,7 @@ __attribute__((weak)) void DMA2_Channel6_IRQHandler (void)
 /**
   * @brief This function handles DMA2 channel7 global interrupt.
   */
-__attribute__((weak)) void DMA2_Channel7_IRQHandler (void)
+void DMA2_Channel7_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA2_Channel7_IRQn 0 */
 

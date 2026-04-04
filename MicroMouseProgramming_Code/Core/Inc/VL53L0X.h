@@ -10,8 +10,14 @@
 // Last Modified : 18-06-2025
 ///////////////////////////////////////////////////////////
 
-#ifndef VL53L0X_REGISTER_MAP_H
-#define VL53L0X_VL53L0X_REGISTER_MAP_H
+#ifndef VL53L0X_h
+#define VL53L0X_h
+
+#include <stdbool.h>
+
+//------------------------------------------------------------
+// Register Map and Enums
+//------------------------------------------------------------
 
 // System control registers
 #define VL53L0X_SYSRANGE_START                          0x00 // 0x00: Single shot mode, 0x01: Continuous mode, 0x02: Back-to-back mode
@@ -121,29 +127,25 @@ enum VL53L0X_Error {
     ALGOOVERFLOW = 13,                 // Algorithm overflow
     RANGEIGNORETHRESHOLD = 14          // Range ignore threshold error
 };
+#define XSHUT1_Pin       GPIO_PIN_8
+#define XSHUT1_GPIO_Port GPIOE
+#define XSHUT2_Pin       GPIO_PIN_15
+#define XSHUT2_GPIO_Port GPIOE
+#define XSHUT3_Pin       GPIO_PIN_3
+#define XSHUT3_GPIO_Port GPIOE
+#define XSHUT4_Pin       GPIO_PIN_10
+#define XSHUT4_GPIO_Port GPIOE
+#define XSHUT5_Pin       GPIO_PIN_2
+#define XSHUT5_GPIO_Port GPIOE
+#define XSHUT6_Pin       GPIO_PIN_11
+#define XSHUT6_GPIO_Port GPIOC
+#define XSHUT7_Pin       GPIO_PIN_3
+#define XSHUT7_GPIO_Port GPIOD
+#define XSHUT8_Pin       GPIO_PIN_8
+#define XSHUT8_GPIO_Port GPIOA
+#define XSHUT9_Pin       GPIO_PIN_0
+#define XSHUT9_GPIO_Port GPIOE
 
-#endif // VL53L0X_REGISTER_MAP_H
-
-#ifndef VL53L0X_h
-#define VL53L0X_h
-
-#ifndef COMPILED_BY_SIMULINK
-#define TOF_DYNAMIC_FSR
-#endif
-
-
-//------------------------------------------------------------
-// For quick and dirty C++ compatibility
-//------------------------------------------------------------
-#define bool  uint8_t
-#define true  1
-#define false 0
-
-//------------------------------------------------------------
-// Defines
-//------------------------------------------------------------
-// I use a 8-bit number for the address, LSB must be 0 so that I can
-// OR over the last bit correctly based on reads and writes
 #define ADDRESS_DEFAULT 0b01010010
 
 // Record the current time to check an upcoming timeout against
@@ -281,7 +283,7 @@ uint8_t getAddress_VL53L0X(void);
 // Iniitializes and configures the sensor. 
 // If the optional argument io_2v8 is 1, the sensor is configured for 2V8 mode (2.8 V I/O); 
 // if 0, the sensor is left in 1V8 mode. Returns 1 if the initialization completed successfully.
-uint8_t initVL53L0X(bool io_2v8, I2C_HandleTypeDef *handler);
+bool initVL53L0X(bool io_2v8, I2C_HandleTypeDef *handler);
 
 // Sets the return signal rate limit to the given value in units of MCPS (mega counts per second). 
 // This is the minimum amplitude of the signal reflected from the target and received by the sensor 
@@ -301,7 +303,7 @@ float getSignalRateLimit(void);
 // factor of N decreases the range measurement standard deviation by a factor of
 // sqrt(N). Defaults to about 33 milliseconds; the minimum is 20 ms.
 // based on VL53L0X_set_measurement_timing_budget_micro_seconds()
-uint8_t setMeasurementTimingBudget(uint32_t budget_us);
+bool setMeasurementTimingBudget(uint32_t budget_us);
 
 // Returns the current measurement timing budget in microseconds.
 uint32_t getMeasurementTimingBudget(void);
@@ -312,7 +314,7 @@ uint32_t getMeasurementTimingBudget(void);
 // Pre: 12 to 18 (initialized to 14 by default)
 // Final: 8 to 14 (initialized to 10 by default)
 // The return value is a boolean indicating whether the requested period was valid.
-uint8_t setVcselPulsePeriod(vcselPeriodType type, uint8_t period_pclks);
+bool setVcselPulsePeriod(vcselPeriodType type, uint8_t period_pclks);
 
 // Returns the current VCSEL pulse period for the given period type.
 uint8_t getVcselPulsePeriod(vcselPeriodType type);
@@ -375,5 +377,16 @@ typedef struct {
   uint16_t msrc_dss_tcc_mclks, pre_range_mclks, final_range_mclks;
   uint32_t msrc_dss_tcc_us,    pre_range_us,    final_range_us;
 }SequenceStepTimeouts;
+
+// VL53L0_t sensor instances (defined in VL53L0X.c)
+extern VL53L0_t TOF_sb_left_result;
+extern VL53L0_t TOF_sb_front_result;
+extern VL53L0_t TOF_sb_right_result;
+extern VL53L0_t TOF_sb_front_left_result;
+extern VL53L0_t TOF_sb_front_right_result;
+extern VL53L0_t TOF_mb_back_result;
+extern VL53L0_t TOF_mb_front_result;
+extern VL53L0_t TOF_mb_front_left_result;
+extern VL53L0_t TOF_mb_front_right_result;
 
 #endif

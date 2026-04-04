@@ -58,6 +58,12 @@ typedef enum {
 #define IMU_RAD2DPS 57.295779513082320876798154814105f   // 180/π
 
 //====================================================================
+// GPIO PIN DEFINES
+//====================================================================
+#define IMU_INT_Pin       GPIO_PIN_5
+#define IMU_INT_GPIO_Port GPIOB
+
+//====================================================================
 // I2C CONFIGURATION (Common)
 //====================================================================
 // I2C timeout is defined in main.h (20ms)
@@ -281,12 +287,30 @@ typedef struct {
 #endif  // IMU_USE_ICM42605
 
 //====================================================================
+// IMU DATA STRUCT (Common to all ICs)
+//====================================================================
+typedef struct
+{
+	float Accel_X;    // m/s²
+	float Accel_Y;
+	float Accel_Z;
+	float Gyro_X;     // rad/s
+	float Gyro_Y;
+	float Gyro_Z;
+	float Gyro_DPS_X; // deg/s
+	float Gyro_DPS_Y;
+	float Gyro_DPS_Z;
+	float Temp_C;
+} IMU_t;
+
+//====================================================================
 // EXTERNAL VARIABLES (Common to all ICs)
 //====================================================================
 extern float IMU_Accel[3];      // Accelerometer data in m/s² [X, Y, Z]
 extern float IMU_Gyro[3];       // Gyroscope data in rad/s [X, Y, Z]
 extern float IMU_Gyro_DPS[3];   // Gyroscope data in °/s [X, Y, Z]
 extern float IMU_Temp;          // Temperature in °C
+extern IMU_t IMU_Data;
 
 //====================================================================
 // FUNCTION DECLARATIONS (Common API)

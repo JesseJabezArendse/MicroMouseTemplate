@@ -26,6 +26,7 @@ float IMU_Accel[3] = {0.0f, 0.0f, 0.0f};
 float IMU_Gyro[3] = {0.0f, 0.0f, 0.0f};
 float IMU_Gyro_DPS[3] = {0.0f, 0.0f, 0.0f};
 float IMU_Temp = 0.0f;
+IMU_t IMU_Data = {0};
 static uint8_t imu_initialized = 0;
 
 //====================================================================
@@ -181,6 +182,17 @@ void refreshIMUValues(void) {
     #ifdef IMU_DYNAMIC_FSR
     calibrateIMU();
     #endif
+
+    IMU_Data.Accel_X    = IMU_Accel[0];
+    IMU_Data.Accel_Y    = IMU_Accel[1];
+    IMU_Data.Accel_Z    = IMU_Accel[2];
+    IMU_Data.Gyro_X     = IMU_Gyro[0];
+    IMU_Data.Gyro_Y     = IMU_Gyro[1];
+    IMU_Data.Gyro_Z     = IMU_Gyro[2];
+    IMU_Data.Gyro_DPS_X = IMU_Gyro_DPS[0];
+    IMU_Data.Gyro_DPS_Y = IMU_Gyro_DPS[1];
+    IMU_Data.Gyro_DPS_Z = IMU_Gyro_DPS[2];
+    IMU_Data.Temp_C     = IMU_Temp;
 }
 
 void calibrateIMU(void) {
@@ -487,6 +499,17 @@ void refreshIMUValues(void) {
     #ifdef IMU_DYNAMIC_FSR
     calibrateIMU();
     #endif
+
+    IMU_Data.Accel_X    = IMU_Accel[0];
+    IMU_Data.Accel_Y    = IMU_Accel[1];
+    IMU_Data.Accel_Z    = IMU_Accel[2];
+    IMU_Data.Gyro_X     = IMU_Gyro[0];
+    IMU_Data.Gyro_Y     = IMU_Gyro[1];
+    IMU_Data.Gyro_Z     = IMU_Gyro[2];
+    IMU_Data.Gyro_DPS_X = IMU_Gyro_DPS[0];
+    IMU_Data.Gyro_DPS_Y = IMU_Gyro_DPS[1];
+    IMU_Data.Gyro_DPS_Z = IMU_Gyro_DPS[2];
+    IMU_Data.Temp_C     = IMU_Temp;
 }
 
 void calibrateIMU(void) {

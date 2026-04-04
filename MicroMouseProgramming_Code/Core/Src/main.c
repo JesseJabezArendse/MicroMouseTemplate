@@ -75,8 +75,7 @@ DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
- void MX_NVIC_Init(void);
- 
+ void MX_NVIC_Init(void); 
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -130,12 +129,6 @@ extern VL53L0_t TOF_mb_back_result;
 extern VL53L0_t TOF_mb_front_result;
 extern VL53L0_t TOF_mb_front_left_result;
 extern VL53L0_t TOF_mb_front_right_result;
-
-extern char oled_string1[18];
-extern char oled_string2[18];
-extern char oled_string3[18];
-extern char oled_string4[18];
-extern char oled_string5[18];
 
 extern uint8_t LED[3];
 extern uint8_t SW[2];
@@ -304,11 +297,11 @@ void recievedFromSimulink(){
         MOTOR_RS = bigBuffer[7];
 
         for (int i = 0; i < 18; i++) {
-            oled_string1[i] = bigBuffer[8 + i];
-            oled_string2[i] = bigBuffer[26 + i];
-            oled_string3[i] = bigBuffer[44 + i];
-            oled_string4[i] = bigBuffer[62 + i];
-            oled_string5[i] = bigBuffer[80 + i];
+            SSD1306_Data.oled_string1[i] = bigBuffer[8 + i];
+            SSD1306_Data.oled_string2[i] = bigBuffer[26 + i];
+            SSD1306_Data.oled_string3[i] = bigBuffer[44 + i];
+            SSD1306_Data.oled_string4[i] = bigBuffer[62 + i];
+            SSD1306_Data.oled_string5[i] = bigBuffer[80 + i];
         }
 
         STATE = bigBuffer[98];
@@ -631,7 +624,7 @@ void refreshLoggedData() {
         usb_storage_buffer_index[active_usb_buffer] = sizeof(MicroMouseLogHeader_t);
         
         // Change OLED to show logging started: "LOGGING RUN :   0%" (18 chars)
-        snprintf(oled_string1, 19, "LOGGING RUN :   0%%");
+        snprintf(SSD1306_Data.oled_string1, 19, "LOGGING RUN :   0%%");
         
         first_buffer = false;
     }
@@ -694,17 +687,17 @@ void refreshLoggedData() {
             
             // Update percentage digits at positions 14, 15, 16 (% stays at position 17)
             if (percentage < 10) {
-                oled_string1[14] = ' ';
-                oled_string1[15] = ' ';
-                oled_string1[16] = '0' + percentage;
+                SSD1306_Data.oled_string1[14] = ' ';
+                SSD1306_Data.oled_string1[15] = ' ';
+                SSD1306_Data.oled_string1[16] = '0' + percentage;
             } else if (percentage < 100) {
-                oled_string1[14] = ' ';
-                oled_string1[15] = '0' + (percentage / 10);
-                oled_string1[16] = '0' + (percentage % 10);
+                SSD1306_Data.oled_string1[14] = ' ';
+                SSD1306_Data.oled_string1[15] = '0' + (percentage / 10);
+                SSD1306_Data.oled_string1[16] = '0' + (percentage % 10);
             } else {
-                oled_string1[14] = '1';
-                oled_string1[15] = '0';
-                oled_string1[16] = '0';
+                SSD1306_Data.oled_string1[14] = '1';
+                SSD1306_Data.oled_string1[15] = '0';
+                SSD1306_Data.oled_string1[16] = '0';
             }
             
             // Check if we just wrote to the last page (0x0807F800 to 0x0807FFFF)
@@ -719,8 +712,8 @@ void refreshLoggedData() {
         MOTOR_RS = 0;
                 
                 // Display on OLED
-                snprintf(oled_string1, sizeof(oled_string1), "LOGS FULL!");
-                snprintf(oled_string2, sizeof(oled_string2), "Safe Mode");
+                snprintf(SSD1306_Data.oled_string1, sizeof(SSD1306_Data.oled_string1), "LOGS FULL!");
+                snprintf(SSD1306_Data.oled_string2, sizeof(SSD1306_Data.oled_string2), "Safe Mode");
         refreshScreen();
                 
                 // Infinite loop with LED blinking (1 second on/off using NOP delay)
@@ -943,8 +936,7 @@ void SystemClock_Config(void)
   * @brief NVIC Configuration.
   * @retval None
   */
- void MX_NVIC_Init(void)
- 
+ void MX_NVIC_Init(void) 
 {
   /* FLASH_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(FLASH_IRQn, 0, 0);
@@ -1098,7 +1090,7 @@ void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00801A80;
+  hi2c1.Init.Timing = 0x00F01A72;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -1539,8 +1531,8 @@ void MX_DMA_Init(void)
 void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -1551,7 +1543,7 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, XSHUT5_Pin|XSHUT3_Pin|XSHUT1_Pin|XSHUT4_Pin|XSHUT2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, XSHUT3_Pin|XSHUT4_Pin|XSHUT2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_SET);
@@ -1565,16 +1557,16 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(CTRL_LEDS_GPIO_Port, CTRL_LEDS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PE4 PE5 PE7
-                           PE12 PE1 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_7
-                          |GPIO_PIN_12|GPIO_PIN_1;
+  /*Configure GPIO pins : PE2 PE4 PE5 PE7
+                           PE8 PE12 PE0 PE1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_7
+                          |GPIO_PIN_8|GPIO_PIN_12|GPIO_PIN_0|GPIO_PIN_1;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : XSHUT5_Pin XSHUT3_Pin XSHUT1_Pin XSHUT4_Pin XSHUT2_Pin */
-  GPIO_InitStruct.Pin = XSHUT5_Pin|XSHUT3_Pin|XSHUT1_Pin|XSHUT4_Pin|XSHUT2_Pin;
+  /*Configure GPIO pins : XSHUT3_Pin XSHUT4_Pin XSHUT2_Pin */
+  GPIO_InitStruct.Pin = XSHUT3_Pin|XSHUT4_Pin|XSHUT2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -1604,11 +1596,11 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA0 PA1 PA2 PA4
-                           PA5 PA6 PA7
+                           PA5 PA6 PA7 PA8
                            PA9 PA10 PA11 PA12
                            PA15 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_4
-                          |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7
+                          |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8
                           |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12
                           |GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
@@ -1631,11 +1623,11 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : PD8 PD9 PD10 PD11
                            PD14 PD15 PD0 PD1
-                           PD2 PD4 PD5
+                           PD2 PD3 PD4 PD5
                            PD6 */
   GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
                           |GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1
-                          |GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN_5
+                          |GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5
                           |GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -1661,7 +1653,7 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(IMU_INT_GPIO_Port, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
   /*Configure GPIO pin Output Level - MB ToF XSHUT pins */
   HAL_GPIO_WritePin(XSHUT7_GPIO_Port, XSHUT7_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(XSHUT8_GPIO_Port, XSHUT8_Pin, GPIO_PIN_RESET);
@@ -1687,7 +1679,7 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(XSHUT9_GPIO_Port, &GPIO_InitStruct);
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -1707,7 +1699,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM6) {
+  if (htim->Instance == TIM6)
+  {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
@@ -1733,8 +1726,7 @@ void Error_Handler(void)
   
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
