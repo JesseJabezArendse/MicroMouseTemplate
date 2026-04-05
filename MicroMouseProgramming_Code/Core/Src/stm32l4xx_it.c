@@ -324,7 +324,7 @@ void DMA2_Channel3_IRQHandler(void)
 /**
   * @brief This function handles DMA2 channel6 global interrupt.
   */
-__attribute__((weak)) void DMA2_Channel6_IRQHandler(void)
+void DMA2_Channel6_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA2_Channel6_IRQn 0 */
 
@@ -337,7 +337,7 @@ __attribute__((weak)) void DMA2_Channel6_IRQHandler(void)
 /**
   * @brief This function handles DMA2 channel7 global interrupt.
   */
-__attribute__((weak)) void DMA2_Channel7_IRQHandler(void)
+void DMA2_Channel7_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA2_Channel7_IRQn 0 */
 #ifdef HAL_UART_MODULE_ENABLED
