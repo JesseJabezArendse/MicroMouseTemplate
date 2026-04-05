@@ -21,22 +21,6 @@
 #include "main.h"
 
 // GPIO pin defines
-#define LED_MOT_LS_Pin          GPIO_PIN_9
-#define LED_MOT_LS_GPIO_Port    GPIOE
-#define LED_DOWN_LS_Pin         GPIO_PIN_11
-#define LED_DOWN_LS_GPIO_Port   GPIOE
-#define LED_MOT_RS_Pin          GPIO_PIN_13
-#define LED_MOT_RS_GPIO_Port    GPIOE
-#define LED_DOWN_RS_Pin         GPIO_PIN_14
-#define LED_DOWN_RS_GPIO_Port   GPIOE
-#define MOT_RIGHT_FWD_Pin       GPIO_PIN_12
-#define MOT_RIGHT_FWD_GPIO_Port GPIOD
-#define MOT_RIGHT_BWD_Pin       GPIO_PIN_13
-#define MOT_RIGHT_BWD_GPIO_Port GPIOD
-#define MOT_LEFT_FWD_Pin        GPIO_PIN_8
-#define MOT_LEFT_FWD_GPIO_Port  GPIOC
-#define MOT_LEFT_BWD_Pin        GPIO_PIN_9
-#define MOT_LEFT_BWD_GPIO_Port  GPIOC
 #define MOTOR_EN_Pin            GPIO_PIN_7
 #define MOTOR_EN_GPIO_Port      GPIOD
 

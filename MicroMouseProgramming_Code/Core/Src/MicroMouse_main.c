@@ -89,10 +89,6 @@ int8_t expectedTerminator[3] = {'A', '_', 'J'};
 
 int32_t counter = 0;
 
-// from this file
-float SW1;
-float SW2;
-
 int8_t bigBuffer[VCP_BUFFER_SIZE]; // 5 bytes for mouse control + headers and terminators
 uint8_t headerBuffer[3];  // Buffer to receive header bytes
 uint8_t header[3];
@@ -101,9 +97,9 @@ int8_t buffer[5];
 uint8_t headerIndex = 0;  // Index for tracking header reception progress
 bool expecting_packet = false;  // Flag to track if we're expecting a full packet
 
-bool LED0 = 0;
-bool LED1 = 0;
-bool LED2 = 0;
+extern LED_t LED0;
+extern LED_t LED1;
+extern LED_t LED2;
 
 // ADCs
 extern uint16_t ADCs[5];
@@ -132,8 +128,8 @@ extern VL53L0_t TOF_mb_front_result;
 extern VL53L0_t TOF_mb_front_left_result;
 extern VL53L0_t TOF_mb_front_right_result;
 
-extern uint8_t LED[3];
-extern uint8_t SW[2];
+extern SW_t SW1;
+extern SW_t SW2;
 
 extern uint8_t batteryLife;
 extern int16_t Vbattery, Vshunt, Current, config, Power;
@@ -296,9 +292,9 @@ void recievedFromSimulink(){
     memcpy(terminator, bigBuffer + (sizeof(bigBuffer) - 3), 3);
     
     if (terminator[0] == expectedTerminator[0] & terminator[1] == expectedTerminator[1] && terminator[2] == expectedTerminator[2]){
-        LED[0] = bigBuffer[3];
-        LED[1] = bigBuffer[4];
-        LED[2] = bigBuffer[5];
+        LED0.state = bigBuffer[3];
+        LED1.state = bigBuffer[4];
+        LED2.state = bigBuffer[5];
 
         MOTOR_L.magnitude = (int8_t)bigBuffer[6];
         MOTOR_R.magnitude = (int8_t)bigBuffer[7];
@@ -520,7 +516,7 @@ void refreshLoggedData() {
     if (!readyToLog) return;
     readyToLog = false;
     // Enable logging if any button is pressed (active low)
-    if (!logging_enabled && (SW[0] != SW[1])) {
+    if (!logging_enabled && (SW1.state != SW2.state)) {
         logging_enabled = true;
         HAL_GPIO_WritePin(MOTOR_EN_GPIO_Port , MOTOR_EN_Pin , GPIO_PIN_SET);
     }
@@ -638,7 +634,7 @@ void refreshLoggedData() {
     log.sample_count = log_sample_counter++;  // Auto-wraps at 65535
     log.state = STATE;
     // Pack LEDs into single byte: bit0=LED0, bit1=LED1, bit2=LED2
-    log.LEDs = (LED[0] & 0x01) | ((LED[1] & 0x01) << 1) | ((LED[2] & 0x01) << 2);
+    log.LEDs = (LED0.state & 0x01) | ((LED1.state & 0x01) << 1) | ((LED2.state & 0x01) << 2);
     log.Motor_Left = (int8_t)MOTOR_L.magnitude;
     log.Motor_Right = (int8_t)MOTOR_R.magnitude;
     log.Distance_Left = (uint16_t)(TOF_sb_left_result.Distance > 4095 ? 4095 : TOF_sb_left_result.Distance);
@@ -724,9 +720,10 @@ void refreshLoggedData() {
                 // Infinite loop with LED blinking (1 second on/off using NOP delay)
                 while(1) {
                     // Turn LEDs on
-                    LED[0] = 1;
-                    LED[1] = 1;
-                    LED[2] = 1;
+                    LED0.state = 1;
+                    LED1.state = 1;
+                    LED2.state = 1;
+                    refreshLEDs();
                     
                     // ~1 second delay using NOPs (80MHz clock, ~80M NOPs = 1 sec)
                     for(volatile uint32_t i = 0; i < 20000000; i++) {
@@ -734,9 +731,10 @@ void refreshLoggedData() {
                     }
                     
                     // Turn LEDs off
-                    LED[0] = 0;
-                    LED[1] = 0;
-                    LED[2] = 0;
+                    LED0.state = 0;
+                    LED1.state = 0;
+                    LED2.state = 0;
+                    refreshLEDs();
                     
                     // ~1 second delay using NOPs
                     for(volatile uint32_t i = 0; i < 20000000; i++) {
@@ -1647,9 +1645,6 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, XSHUT3_Pin|XSHUT4_Pin|XSHUT2_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
@@ -1667,13 +1662,6 @@ void MX_GPIO_Init(void)
                           |GPIO_PIN_8|GPIO_PIN_12|GPIO_PIN_0|GPIO_PIN_1;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : XSHUT3_Pin XSHUT4_Pin XSHUT2_Pin */
-  GPIO_InitStruct.Pin = XSHUT3_Pin|XSHUT4_Pin|XSHUT2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : SW1_Pin */
@@ -1758,31 +1746,6 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(IMU_INT_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
-  /*Configure GPIO pin Output Level - MB ToF XSHUT pins */
-  HAL_GPIO_WritePin(XSHUT7_GPIO_Port, XSHUT7_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(XSHUT8_GPIO_Port, XSHUT8_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(XSHUT9_GPIO_Port, XSHUT9_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : XSHUT7_Pin (PD3 - MB Front ToF) */
-  GPIO_InitStruct.Pin = XSHUT7_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(XSHUT7_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : XSHUT8_Pin (PA8 - MB Front Left ToF) */
-  GPIO_InitStruct.Pin = XSHUT8_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(XSHUT8_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : XSHUT9_Pin (PE0 - MB Front Right ToF) */
-  GPIO_InitStruct.Pin = XSHUT9_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(XSHUT9_GPIO_Port, &GPIO_InitStruct);
   /* USER CODE END MX_GPIO_Init_2 */
 }
 

@@ -80,14 +80,6 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 0 */
 int32_t counter = 0;
 
-// from this file
-float SW1;
-float SW2;
-
-bool LED0 = 0;
-bool LED1 = 0;
-bool LED2 = 0;
-
 // ADCs
 extern uint16_t ADCs[5];
 
@@ -112,8 +104,11 @@ extern VL53L0_t TOF_mb_front_result;
 extern VL53L0_t TOF_mb_front_left_result;
 extern VL53L0_t TOF_mb_front_right_result;
 
-extern uint8_t LED[3];
-extern uint8_t SW[2];
+extern LED_t LED0;
+extern LED_t LED1;
+extern LED_t LED2;
+extern SW_t SW1;
+extern SW_t SW2;
 
 extern uint8_t batteryLife;
 extern int16_t Vbattery, Vshunt, Current, config, Power;
@@ -127,7 +122,7 @@ extern uint8_t readyToLog;
 extern uint32_t log_flash_write_addr;
 extern uint32_t log_flash_start_addr;
 uint8_t log_time_counter = 0;
- uint16_t log_sample_counter = 0;  // Wraps at 65535
+uint16_t log_sample_counter = 0;  // Wraps at 65535
  
 
 // Global header configuration - modify these values as needed
@@ -396,7 +391,7 @@ void refreshLoggedData() {
     if (!readyToLog) return;
     readyToLog = false;
     // Enable logging if any button is pressed (active low)
-    if (!logging_enabled && (SW[0] != SW[1])) {
+    if (!logging_enabled && (SW1.state != SW2.state)) {
         logging_enabled = true;
         HAL_GPIO_WritePin(MOTOR_EN_GPIO_Port , MOTOR_EN_Pin , GPIO_PIN_SET);
     }
@@ -514,7 +509,7 @@ void refreshLoggedData() {
     log.sample_count = log_sample_counter++;  // Auto-wraps at 65535
     log.state = STATE;
     // Pack LEDs into single byte: bit0=LED0, bit1=LED1, bit2=LED2
-    log.LEDs = (LED[0] & 0x01) | ((LED[1] & 0x01) << 1) | ((LED[2] & 0x01) << 2);
+    log.LEDs = (LED0.state & 0x01) | ((LED1.state & 0x01) << 1) | ((LED2.state & 0x01) << 2);
     log.Motor_Left = (int8_t)MOTOR_L.magnitude;
     log.Motor_Right = (int8_t)MOTOR_R.magnitude;
     log.Distance_Left = (uint16_t)(TOF_sb_left_result.Distance > 4095 ? 4095 : TOF_sb_left_result.Distance);
@@ -600,9 +595,10 @@ void refreshLoggedData() {
                 // Infinite loop with LED blinking (1 second on/off using NOP delay)
                 while(1) {
                     // Turn LEDs on
-                    LED[0] = 1;
-                    LED[1] = 1;
-                    LED[2] = 1;
+                    LED0.state = 1;
+                    LED1.state = 1;
+                    LED2.state = 1;
+                    refreshLEDs();
                     
                     // ~1 second delay using NOPs (80MHz clock, ~80M NOPs = 1 sec)
                     for(volatile uint32_t i = 0; i < 20000000; i++) {
@@ -610,9 +606,10 @@ void refreshLoggedData() {
                     }
                     
                     // Turn LEDs off
-                    LED[0] = 0;
-                    LED[1] = 0;
-                    LED[2] = 0;
+                    LED0.state = 0;
+                    LED1.state = 0;
+                    LED2.state = 0;
+                    refreshLEDs();
                     
                     // ~1 second delay using NOPs
                     for(volatile uint32_t i = 0; i < 20000000; i++) {

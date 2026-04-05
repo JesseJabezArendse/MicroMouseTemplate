@@ -93,31 +93,30 @@ assignin('base', 'Motor_t', Motor_t);
 
 
 %% ====================================================================
-%  LED_t  —  mirrors LED_t in LEDs.h  (instance: LEDS)
+%  LED_t  —  mirrors LED_t in LEDs.h  (single LED instance)
 %% ====================================================================
 clear elems;
-elems(1) = Simulink.BusElement; elems(1).Name = 'LED0'; elems(1).DataType = 'uint8';
-elems(2) = Simulink.BusElement; elems(2).Name = 'LED1'; elems(2).DataType = 'uint8';
-elems(3) = Simulink.BusElement; elems(3).Name = 'LED2'; elems(3).DataType = 'uint8';
+elems(1) = Simulink.BusElement; elems(1).Name = 'pin';   elems(1).DataType = 'uint16';  % GPIO pin
+elems(2) = Simulink.BusElement; elems(2).Name = 'state'; elems(2).DataType = 'uint8';   % LED state (0 = off, 1 = on)
 
 LED_t = Simulink.Bus;
 LED_t.Elements   = elems;
 LED_t.HeaderFile = 'LEDs.h';
-LED_t.Description = 'LED output states (0 = off, 1 = on)';
+LED_t.Description = 'Single LED: GPIO pin and on/off state';
 assignin('base', 'LED_t', LED_t);
 
 
 %% ====================================================================
-%  SW_t  —  mirrors SW_t in Buttons.h  (instance: SWS)
+%  SW_t  —  mirrors SW_t in Buttons.h  (single switch instance)
 %% ====================================================================
 clear elems;
-elems(1) = Simulink.BusElement; elems(1).Name = 'SW0'; elems(1).DataType = 'uint8';
-elems(2) = Simulink.BusElement; elems(2).Name = 'SW1'; elems(2).DataType = 'uint8';
+elems(1) = Simulink.BusElement; elems(1).Name = 'pin';   elems(1).DataType = 'uint16';  % GPIO pin
+elems(2) = Simulink.BusElement; elems(2).Name = 'state'; elems(2).DataType = 'uint8';   % Switch state (0 = released, 1 = pressed)
 
 SW_t = Simulink.Bus;
 SW_t.Elements   = elems;
 SW_t.HeaderFile = 'Buttons.h';
-SW_t.Description = 'Switch/button states (0 = released, 1 = pressed)';
+SW_t.Description = 'Single switch: GPIO pin and button state';
 assignin('base', 'SW_t', SW_t);
 
 

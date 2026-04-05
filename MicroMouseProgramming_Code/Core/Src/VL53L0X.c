@@ -560,6 +560,49 @@ void initTOFs(uint16_t signalRate){
   TOF_mb_front_left_result.Address = newToFAddress_MB_FL; TOF_mb_front_left_result.I2Cx = &hi2c2;   TOF_mb_front_left_result.XSHUT_Port = XSHUT8_GPIO_Port; TOF_mb_front_left_result.XSHUT_Pin = XSHUT8_Pin;
   TOF_mb_front_right_result.Address = newToFAddress_MB_FR; TOF_mb_front_right_result.I2Cx = &hi2c2; TOF_mb_front_right_result.XSHUT_Port = XSHUT9_GPIO_Port; TOF_mb_front_right_result.XSHUT_Pin = XSHUT9_Pin;
 
+  // Configure XSHUT GPIO pins before reset
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+
+  // Configure XSHUT1 on GPIOE
+  GPIO_InitStruct.Pin = XSHUT1_Pin;
+  HAL_GPIO_Init(XSHUT1_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT2 on GPIOE
+  GPIO_InitStruct.Pin = XSHUT2_Pin;
+  HAL_GPIO_Init(XSHUT2_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT3 on GPIOE
+  GPIO_InitStruct.Pin = XSHUT3_Pin;
+  HAL_GPIO_Init(XSHUT3_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT4 on GPIOE
+  GPIO_InitStruct.Pin = XSHUT4_Pin;
+  HAL_GPIO_Init(XSHUT4_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT5 on GPIOE
+  GPIO_InitStruct.Pin = XSHUT5_Pin;
+  HAL_GPIO_Init(XSHUT5_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT6 on GPIOC
+  GPIO_InitStruct.Pin = XSHUT6_Pin;
+  HAL_GPIO_Init(XSHUT6_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT7 on GPIOD
+  GPIO_InitStruct.Pin = XSHUT7_Pin;
+  HAL_GPIO_Init(XSHUT7_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT8 on GPIOA
+  GPIO_InitStruct.Pin = XSHUT8_Pin;
+  HAL_GPIO_Init(XSHUT8_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT9 on GPIOE
+  GPIO_InitStruct.Pin = XSHUT9_Pin;
+  HAL_GPIO_Init(XSHUT9_GPIO_Port, &GPIO_InitStruct);
+
   setTimeout(200);
 
   // Reset all sensors
