@@ -42,7 +42,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#define I2C_TIMEOUT 200
+#define I2C_TIMEOUT 10
 
 /* USER CODE END Includes */
 
@@ -91,6 +91,8 @@ void restartI2C(I2C_HandleTypeDef *hi2c);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define XSHUT5_Pin GPIO_PIN_2
+#define XSHUT5_GPIO_Port GPIOE
 #define XSHUT3_Pin GPIO_PIN_3
 #define XSHUT3_GPIO_Port GPIOE
 #define SW1_Pin GPIO_PIN_6
@@ -111,6 +113,8 @@ void restartI2C(I2C_HandleTypeDef *hi2c);
 #define ADC_MOT_LS_GPIO_Port GPIOB
 #define SW2_Pin GPIO_PIN_2
 #define SW2_GPIO_Port GPIOB
+#define XSHUT1_Pin GPIO_PIN_8
+#define XSHUT1_GPIO_Port GPIOE
 #define LED_MOT_LS_Pin GPIO_PIN_9
 #define LED_MOT_LS_GPIO_Port GPIOE
 #define XSHUT4_Pin GPIO_PIN_10
@@ -139,12 +143,18 @@ void restartI2C(I2C_HandleTypeDef *hi2c);
 #define MOTORL_A_EN_GPIO_Port GPIOC
 #define MOTORL_B_EN_Pin GPIO_PIN_9
 #define MOTORL_B_EN_GPIO_Port GPIOC
+#define XSHUT8_Pin GPIO_PIN_8
+#define XSHUT8_GPIO_Port GPIOA
+#define XSHUT7_Pin GPIO_PIN_3
+#define XSHUT7_GPIO_Port GPIOD
 #define MOTOR_EN_Pin GPIO_PIN_7
 #define MOTOR_EN_GPIO_Port GPIOD
 #define CTRL_LEDS_Pin GPIO_PIN_3
 #define CTRL_LEDS_GPIO_Port GPIOB
 #define IMU_INT_Pin GPIO_PIN_5
 #define IMU_INT_GPIO_Port GPIOB
+#define XSHUT9_Pin GPIO_PIN_0
+#define XSHUT9_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
 

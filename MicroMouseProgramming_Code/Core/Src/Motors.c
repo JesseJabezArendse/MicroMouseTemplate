@@ -53,6 +53,17 @@ static uint32_t last_l_edge_ms = 0;
 //     = 60,000,000 / (1170 * delta_us)
 #define ENC_TICKS_PER_REV  1170   // 4680 quadrature counts / 4 (single-edge capture)
 
+// Fixed-point scaling for encoderRate: store RPM with 2 decimal places.
+// Example: 123.45 RPM is stored as 12345.
+#define RPM_SCALE 100
+
+static int16_t clamp_to_i16(int32_t value)
+{
+    if (value > 32767) return 32767;
+    if (value < -32768) return -32768;
+    return (int16_t)value;
+}
+
 
 void initMotors(void)
 {
@@ -152,9 +163,9 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
         last_r_edge_ms    = now_ms;
 
         if (delta_us > 0 && delta_us < 62000U) {
-            int32_t rate = 60000000L / (ENC_TICKS_PER_REV * (int32_t)delta_us);
+            int32_t rate_x100 = (int32_t)(((60000000LL * RPM_SCALE)) / ((int64_t)ENC_TICKS_PER_REV * (int64_t)delta_us));
             int8_t  dir  = HAL_GPIO_ReadPin(MOTORR_B_ENC_GPIO_Port, MOTORR_B_ENC_Pin) ? -1 : 1;  // inverted: motor mounted opposing
-            MOTOR_R.encoderRate = (int16_t)(rate * dir);
+            MOTOR_R.encoderRate = clamp_to_i16((int32_t)dir * rate_x100);
         }
     }
     else if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3)
@@ -166,9 +177,9 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
         last_l_edge_ms    = now_ms;
 
         if (delta_us > 0 && delta_us < 62000U) {
-            int32_t rate = 60000000L / (ENC_TICKS_PER_REV * (int32_t)delta_us);
+            int32_t rate_x100 = (int32_t)(((60000000LL * RPM_SCALE)) / ((int64_t)ENC_TICKS_PER_REV * (int64_t)delta_us));
             int8_t  dir  = HAL_GPIO_ReadPin(MOTORL_B_ENC_GPIO_Port, MOTORL_B_ENC_Pin) ? 1 : -1;
-            MOTOR_L.encoderRate = (int16_t)(rate * dir);
+            MOTOR_L.encoderRate = clamp_to_i16((int32_t)dir * rate_x100);
         }
     }
 }

@@ -37,7 +37,7 @@
 typedef struct
 {
 	int16_t	magnitude;	// Speed: negative = reverse, positive = forward (-100 to +100)
-	int16_t	encoderRate;	// Encoder tick rate (ticks/s)
+	int16_t	encoderRate;	// Motor speed in fixed-point RPM*100 (e.g., 123.45 RPM -> 12345)
 } Motor_t;
 
 
