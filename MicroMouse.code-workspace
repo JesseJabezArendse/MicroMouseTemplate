@@ -13,58 +13,16 @@
     "cortex-debug.armToolchainPath": "c:\\Users\\JesseJabezArendse\\AppData\\Roaming\\Code\\User\\globalStorage\\bmd.stm32-for-vscode\\@xpack-dev-tools\\arm-none-eabi-gcc\\12.3.1-1.2.1\\.content\\bin",
     "cortex-debug.openocdPath": "c:\\Users\\JesseJabezArendse\\AppData\\Roaming\\Code\\User\\globalStorage\\bmd.stm32-for-vscode\\@xpack-dev-tools\\openocd\\0.12.0-2.1\\.content\\bin\\openocd.EXE"
   },
-  "launch": {
-    "configurations": [
-      {
-        "name": "Debug MicroMouse_Deploy.elf",
-        "type": "cortex-debug",
-        "request": "launch",
-        "servertype": "stlink",
-        "cwd": "${workspaceFolder}",
-        "executable": "${workspaceFolder}/MicroMouse_Deploy.elf",
-        "device": "STM32L476VETx",
-        "svdFile": "",
-        "liveWatch": {
-          "enabled": true,
-          "samplesPerSecond": 20
-        },
-        "cpu": "cortex-m4",
-        "preLaunchTask": "",
-        "postRestartCommands": [],
-        "showDevDebugOutput": "none",
-        "searchDir": [
-          "${workspaceFolder}/MicroMouse_Deploy_ert_rtw",
-          "${workspaceFolder}/MicroMouse_Deploy_ert_rtw/instrumented"
-        ]
-      },
-      {
-        "showDevDebugOutput": "parsed",
-        "cwd": "${workspaceRoot}",
-        "executable": "./build/debug/MicroMouse_Deploy.elf",
-        "name": "Debug STM32",
-        "request": "launch",
-        "type": "cortex-debug",
-        "servertype": "openocd",
-        "preLaunchTask": "Build STM",
-        "device": "",
-        "configFiles": [
-          "openocd.cfg"
-        ]
-      },
-      {
-        "showDevDebugOutput": "parsed",
-        "cwd": "${workspaceRoot}",
-        "executable": "./build/debug/MicroMouse_Deploy.elf",
-        "name": "Attach STM32",
-        "request": "attach",
-        "type": "cortex-debug",
-        "servertype": "openocd",
-        "preLaunchTask": "Build STM",
-        "device": "",
-        "configFiles": [
-          "openocd.cfg"
-        ]
-      }
+  "extensions": {
+    "recommendations": [
+      "twxs.cmake",
+      "josetr.cmake-language-support-vscode",
+      "ms-vscode.cmake-tools",
+      "marus25.cortex-debug",
+      "bmd.stm32-for-vscode",
+      "STMicroelectronics.stm32cube-ide-build-cmake",
+      "STMicroelectronics.stm32cube-ide-core",
+      "cnshenj.vscode-task-manager"
     ]
-  },
+  }
 }

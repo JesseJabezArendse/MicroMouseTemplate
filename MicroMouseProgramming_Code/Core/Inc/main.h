@@ -28,6 +28,17 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l4xx_hal.h"
+#include "stm32l4xx_ll_dma.h"
+#include "stm32l4xx_ll_usart.h"
+#include "stm32l4xx_ll_rcc.h"
+#include "stm32l4xx_ll_bus.h"
+#include "stm32l4xx_ll_cortex.h"
+#include "stm32l4xx_ll_system.h"
+#include "stm32l4xx_ll_utils.h"
+#include "stm32l4xx_ll_pwr.h"
+#include "stm32l4xx_ll_gpio.h"
+
+#include "stm32l4xx_ll_exti.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -112,14 +123,22 @@ void restartI2C(I2C_HandleTypeDef *hi2c);
 #define LED_DOWN_RS_GPIO_Port GPIOE
 #define XSHUT2_Pin GPIO_PIN_15
 #define XSHUT2_GPIO_Port GPIOE
-#define MOT_RIGHT_FWD_Pin GPIO_PIN_12
-#define MOT_RIGHT_FWD_GPIO_Port GPIOD
-#define MOT_RIGHT_BWD_Pin GPIO_PIN_13
-#define MOT_RIGHT_BWD_GPIO_Port GPIOD
-#define MOT_LEFT_FWD_Pin GPIO_PIN_8
-#define MOT_LEFT_FWD_GPIO_Port GPIOC
-#define MOT_LEFT_BWD_Pin GPIO_PIN_9
-#define MOT_LEFT_BWD_GPIO_Port GPIOC
+#define MOTORR_A_ENC_Pin GPIO_PIN_12
+#define MOTORR_A_ENC_GPIO_Port GPIOD
+#define MOTORR_B_ENC_Pin GPIO_PIN_13
+#define MOTORR_B_ENC_GPIO_Port GPIOD
+#define MOTORL_A_ENC_Pin GPIO_PIN_14
+#define MOTORL_A_ENC_GPIO_Port GPIOD
+#define MOTORL_B_ENC_Pin GPIO_PIN_15
+#define MOTORL_B_ENC_GPIO_Port GPIOD
+#define MOTORR_A_EN_Pin GPIO_PIN_6
+#define MOTORR_A_EN_GPIO_Port GPIOC
+#define MOTORR_B_EN_Pin GPIO_PIN_7
+#define MOTORR_B_EN_GPIO_Port GPIOC
+#define MOTORL_A_EN_Pin GPIO_PIN_8
+#define MOTORL_A_EN_GPIO_Port GPIOC
+#define MOTORL_B_EN_Pin GPIO_PIN_9
+#define MOTORL_B_EN_GPIO_Port GPIOC
 #define MOTOR_EN_Pin GPIO_PIN_7
 #define MOTOR_EN_GPIO_Port GPIOD
 #define CTRL_LEDS_Pin GPIO_PIN_3

@@ -91,7 +91,9 @@ Core/Src/instrumented/LEDs.c \
 Core/Src/instrumented/Motors.c \
 Core/Src/instrumented/SSD1306.c \
 Core/Src/instrumented/VL53L0X.c \
-Core/Src/instrumented/main.c \
+Core/Src/instrumented/DMA.c \
+Core/Src/instrumented/MicroMouse_main.c \
+Core/Src/instrumented/VCP.c \
 Core/Src/instrumented/preformatted_flash.c \
 Core/Src/instrumented/stm32l4xx_hal_msp.c \
 Core/Src/instrumented/stm32l4xx_hal_timebase_tim.c \
@@ -100,7 +102,9 @@ Core/Src/instrumented/syscalls.c \
 Core/Src/instrumented/sysmem.c \
 Core/Src/instrumented/system_stm32l4xx.c \
 Core/Src/instrumented/to_compile_flash.c \
-Core/Src/main.c \
+Core/Src/DMA.c \
+Core/Src/MicroMouse_main.c \
+Core/Src/VCP.c \
 Core/Src/preformatted_flash.c \
 Core/Src/stm32l4xx_hal_msp.c \
 Core/Src/stm32l4xx_hal_timebase_tim.c \
@@ -128,6 +132,10 @@ Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c \
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_usart.c \
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_gpio.c \
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_rcc.c \
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_dma.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.c
 
@@ -208,13 +216,17 @@ AS_DEFS =
 # C defines
 C_DEFS =  \
 -DSTM32L476xx \
--DUSE_HAL_DRIVER
+-DUSE_HAL_DRIVER \
+-DUSE_FULL_LL_DRIVER \
+-DHAL_UART_MODULE_ENABLED
 
 
 # CXX defines
 CXX_DEFS =  \
 -DSTM32L476xx \
--DUSE_HAL_DRIVER
+-DUSE_HAL_DRIVER \
+-DUSE_FULL_LL_DRIVER \
+-DHAL_UART_MODULE_ENABLED
 
 
 # AS includes

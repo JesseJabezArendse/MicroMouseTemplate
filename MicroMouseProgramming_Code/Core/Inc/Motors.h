@@ -40,22 +40,28 @@
 #define MOTOR_EN_Pin            GPIO_PIN_7
 #define MOTOR_EN_GPIO_Port      GPIOD
 
+// Encoder input pins (TIM4 input capture)
+#define MOTORR_A_ENC_Pin        GPIO_PIN_12
+#define MOTORR_A_ENC_GPIO_Port  GPIOD
+#define MOTORR_B_ENC_Pin        GPIO_PIN_13
+#define MOTORR_B_ENC_GPIO_Port  GPIOD
+#define MOTORL_A_ENC_Pin        GPIO_PIN_14
+#define MOTORL_A_ENC_GPIO_Port  GPIOD
+#define MOTORL_B_ENC_Pin        GPIO_PIN_15
+#define MOTORL_B_ENC_GPIO_Port  GPIOD
+
 typedef struct
 {
 	int16_t	magnitude;	// Speed: negative = reverse, positive = forward (-100 to +100)
 	int16_t	encoderRate;	// Encoder tick rate (ticks/s)
 } Motor_t;
 
-// Motor instances
-extern Motor_t MOTOR_L;
-extern Motor_t MOTOR_R;
-
-// Legacy scalar aliases (kept for compatibility)
-extern int8_t MOTOR_LS;
-extern int8_t MOTOR_RS;
 
 // Function declarations
 void initMotors();
 void refreshMotors();
+
+extern Motor_t MOTOR_L;
+extern Motor_t MOTOR_R; 
 
 #endif

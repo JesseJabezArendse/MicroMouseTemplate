@@ -147,11 +147,10 @@ function updateSensors(sensors) {
 }
 
 function updateActuators(actuators) {
-    // Motors
-    document.getElementById('motor-left').value = actuators.motors.left;
-    document.getElementById('motor-left-val').textContent = actuators.motors.left;
-    document.getElementById('motor-right').value = actuators.motors.right;
-    document.getElementById('motor-right-val').textContent = actuators.motors.right;
+    // Motors — only update the encoder readbacks, not the sliders
+    // (sliders are user-controlled; writing them back from the server resets user input)
+    document.getElementById('enc-rate-left').textContent = actuators.motors.encoder_rate_left;
+    document.getElementById('enc-rate-right').textContent = actuators.motors.encoder_rate_right;
 
     // LEDs
     actuators.leds.forEach((state, i) => {
@@ -229,6 +228,15 @@ let batteryChartLayout = {
     yaxis: { title: 'Voltage (V)', zeroline: false }
 };
 
+let encoderChartLayout = {
+    title: 'Motor Encoder Speed (RPM)',
+    plot_bgcolor: '#1a1a1a',
+    paper_bgcolor: '#2d2d2d',
+    font: { color: '#ecf0f1', family: 'Segoe UI' },
+    xaxis: { title: 'Time', zeroline: false },
+    yaxis: { title: 'Speed (RPM)', zeroline: false }
+};
+
 function updateCharts(data) {
     fetch('/api/history')
         .then(response => response.json())
@@ -272,7 +280,7 @@ function updateCharts(data) {
                     },
                     {
                         x: history.timestamps,
-                        y: history.tof_back,
+                        y: history.tof_mb_back,
                         name: 'Back',
                         mode: 'lines',
                         line: { color: '#95a5a6' }
@@ -291,6 +299,26 @@ function updateCharts(data) {
                     line: { color: '#f39c12' }
                 }];
                 Plotly.react('battery-chart', batteryData, batteryChartLayout, { responsive: true });
+            }
+
+            if (history.encoder_rate_left && history.encoder_rate_left.length > 0) {
+                const encoderData = [
+                    {
+                        x: history.timestamps,
+                        y: history.encoder_rate_left,
+                        name: 'Left RPM',
+                        mode: 'lines',
+                        line: { color: '#3498db' }
+                    },
+                    {
+                        x: history.timestamps,
+                        y: history.encoder_rate_right,
+                        name: 'Right RPM',
+                        mode: 'lines',
+                        line: { color: '#e74c3c' }
+                    }
+                ];
+                Plotly.react('encoder-chart', encoderData, encoderChartLayout, { responsive: true });
             }
         })
         .catch(err => console.error('History update error:', err));

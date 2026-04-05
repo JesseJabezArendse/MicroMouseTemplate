@@ -28,7 +28,7 @@ set(MCU_FLAGS "${CPU_FLAGS} ${THUMB_FLAGS} ${FPU_FLAGS} ${FLOAT_ABI_FLAGS}")
 # C Sources
 # ============================================
 set(C_SOURCES
-    Core/Src/main.c
+    Core/Src/MicroMouse_main.c
     Core/Src/stm32l4xx_it.c
     Core/Src/stm32l4xx_hal_msp.c
     Core/Src/system_stm32l4xx.c
@@ -42,6 +42,8 @@ set(C_SOURCES
     Core/Src/preformatted_flash.c
     Core/Src/SSD1306.c
     Core/Src/VL53L0X.c
+    Core/Src/DMA.c
+    Core/Src/VCP.c
     Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c
     Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.c
     Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.c
@@ -58,8 +60,11 @@ set(C_SOURCES
     Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim.c
     Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c
     Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c_ex.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.c
+    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c_ex.c    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c
+    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_usart.c
+    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_gpio.c
+    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_rcc.c
+    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_dma.c    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.c
     Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.c
     Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc.c
     Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc_ex.c
@@ -88,6 +93,8 @@ set(INCLUDE_DIRS
 # ============================================
 set(C_DEFS
     USE_HAL_DRIVER
+    USE_FULL_LL_DRIVER
+    HAL_UART_MODULE_ENABLED
     STM32L476xx
 )
 

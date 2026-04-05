@@ -168,13 +168,23 @@
                     <div class="motor-control">
                         <div class="motor">
                             <label>Left Motor</label>
-                            <input type="range" id="motor-left" min="-255" max="255" value="0">
+                            <input type="range" id="motor-left" min="-100" max="100" value="0">
                             <span id="motor-left-val">0</span>
                         </div>
                         <div class="motor">
                             <label>Right Motor</label>
-                            <input type="range" id="motor-right" min="-255" max="255" value="0">
+                            <input type="range" id="motor-right" min="-100" max="100" value="0">
                             <span id="motor-right-val">0</span>
+                        </div>
+                    </div>
+                    <div class="sensor-grid" style="margin-top: 10px;">
+                        <div class="sensor-box">
+                            <span class="sensor-label">Left RPM</span>
+                            <span id="enc-rate-left" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Right RPM</span>
+                            <span id="enc-rate-right" class="sensor-value">---</span>
                         </div>
                     </div>
                 </div>
@@ -215,6 +225,7 @@
             <h2>📈 Real-Time Data</h2>
             <div id="tof-chart" style="height: 300px;"></div>
             <div id="battery-chart" style="height: 300px; margin-top: 20px;"></div>
+            <div id="encoder-chart" style="height: 300px; margin-top: 20px;"></div>
         </section>
     </div>
 

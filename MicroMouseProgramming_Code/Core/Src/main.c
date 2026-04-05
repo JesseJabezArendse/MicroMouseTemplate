@@ -65,10 +65,6 @@ TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
 TIM_HandleTypeDef htim7;
 
-UART_HandleTypeDef huart1;
-DMA_HandleTypeDef hdma_usart1_rx;
-DMA_HandleTypeDef hdma_usart1_tx;
-
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -82,22 +78,11 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int8_t expectedHeader[3] = {'J', '_', 'A'};
-int8_t expectedTerminator[3] = {'A', '_', 'J'};
-
 int32_t counter = 0;
 
 // from this file
 float SW1;
 float SW2;
-
-int8_t bigBuffer[3+5+(18*5)+1+3]; // 5 bytes for mouse control + headers and terminators
-uint8_t headerBuffer[3];  // Buffer to receive header bytes
-uint8_t header[3];
-uint8_t terminator[3];
-int8_t buffer[5];
-uint8_t headerIndex = 0;  // Index for tracking header reception progress
-bool expecting_packet = false;  // Flag to track if we're expecting a full packet
 
 bool LED0 = 0;
 bool LED1 = 0;
@@ -111,9 +96,6 @@ extern uint16_t V_PHOTO_DOWN_LS;
 extern uint16_t V_PHOTO_DOWN_RS;
 extern uint16_t V_PHOTO_MOT_LS;
 extern uint16_t V_PHOTO_MOT_RS;
-
-extern int8_t MOTOR_LS;
-extern int8_t MOTOR_RS;
 
 // from other files
 extern float IMU_Accel[3];
@@ -206,111 +188,10 @@ void configureTimer(float desired_frequency, TIM_TypeDef* tim) {
 }
 
 void sendToSimulink(){
-    HAL_UART_Transmit(&huart1, (uint8_t *) "J_A"           ,3 , HAL_MAX_DELAY);
+    // UART removed — use MicroMouse_main.c for UART-based Simulink comms
 
-    // Switches
-    HAL_UART_Transmit(&huart1,(float_t*)  &SW1     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,(float_t *) &SW2     ,4 , HAL_MAX_DELAY);
-
-  // IMU
-    HAL_UART_Transmit(&huart1, &IMU_Accel[0]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &IMU_Accel[1]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &IMU_Accel[2]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &IMU_Gyro[0]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &IMU_Gyro[1]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &IMU_Gyro[2]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &IMU_Temp         ,4 , HAL_MAX_DELAY);
-
-
-  // TOF
-    HAL_UART_Transmit(&huart1, &(TOF_sb_left_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &(TOF_sb_left_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &(TOF_sb_left_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &(TOF_sb_left_result.Status  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_left_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_left_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_left_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_left_result.Status  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_result.Status  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_right_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_right_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_right_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_front_right_result.Status  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_right_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_right_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_right_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_sb_right_result.Status  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_mb_back_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_mb_back_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_mb_back_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_mb_back_result.Status  )  , 4 , HAL_MAX_DELAY);
-
-    // VBAT, MOT_RS , DOWN_RS , DOWN_LS , MOT_LS
-    HAL_UART_Transmit(&huart1,  &(ADCs[0]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(ADCs[0]  )  , 2 , HAL_MAX_DELAY);
-
-    HAL_UART_Transmit(&huart1,  &(ADCs[1]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(ADCs[1]  )  , 2 , HAL_MAX_DELAY);
-
-    HAL_UART_Transmit(&huart1,  &(ADCs[2]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(ADCs[2]  )  , 2 , HAL_MAX_DELAY);
-
-    HAL_UART_Transmit(&huart1,  &(ADCs[3]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(ADCs[3]  )  , 2 , HAL_MAX_DELAY);
-
-    HAL_UART_Transmit(&huart1,  &(ADCs[4]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(ADCs[4]  )  , 2 , HAL_MAX_DELAY);
-
-    // INA219
-    HAL_UART_Transmit(&huart1, (uint8_t *) &Vbattery     ,2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (uint8_t *) &Vshunt       ,2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (uint8_t *) &Current      ,2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (uint8_t *) &Power        ,2 , HAL_MAX_DELAY); 
-    HAL_UART_Transmit(&huart1, (uint8_t *) &batteryLife  ,1 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (uint8_t *) &batteryLife  ,1 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (uint8_t *) &batteryLife  ,1 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (uint8_t *) &batteryLife  ,1 , HAL_MAX_DELAY);
-
-
-
-    HAL_UART_Transmit(&huart1, (uint32_t *) &counter         ,4 , HAL_MAX_DELAY);
-    // HAL_UART_Transmit(&huart1, (uint8_t *) "A_J"      ,3 , HAL_MAX_DELAY);
 }
 
-void recievedFromSimulink(){
-    // Data has been received via DMA into bigBuffer
-    // We only reach here if the header was already verified
-    expecting_packet = false; // Reset flag as packet has been received
-    
-    // Extract and verify terminator bytes
-    memcpy(terminator, bigBuffer + (sizeof(bigBuffer) - 3), 3);
-    
-    if (terminator[0] == expectedTerminator[0] & terminator[1] == expectedTerminator[1] && terminator[2] == expectedTerminator[2]){
-        LED[0] = bigBuffer[3];
-        LED[1] = bigBuffer[4];
-        LED[2] = bigBuffer[5];
-
-        MOTOR_LS = bigBuffer[6];
-        MOTOR_RS = bigBuffer[7];
-
-        for (int i = 0; i < 18; i++) {
-            SSD1306_Data.oled_string1[i] = bigBuffer[8 + i];
-            SSD1306_Data.oled_string2[i] = bigBuffer[26 + i];
-            SSD1306_Data.oled_string3[i] = bigBuffer[44 + i];
-            SSD1306_Data.oled_string4[i] = bigBuffer[62 + i];
-            SSD1306_Data.oled_string5[i] = bigBuffer[80 + i];
-        }
-
-        STATE = bigBuffer[98];
-    }
-    
-    // Restart header reception for next packet
-    headerIndex = 0;
-    HAL_UART_Receive_IT(&huart1, &headerBuffer[headerIndex], 1);
-}
 
 uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAddresses) {
     uint8_t found = 0;
@@ -634,8 +515,8 @@ void refreshLoggedData() {
     log.state = STATE;
     // Pack LEDs into single byte: bit0=LED0, bit1=LED1, bit2=LED2
     log.LEDs = (LED[0] & 0x01) | ((LED[1] & 0x01) << 1) | ((LED[2] & 0x01) << 2);
-    log.Motor_Left = MOTOR_LS;
-    log.Motor_Right = MOTOR_RS;
+    log.Motor_Left = (int8_t)MOTOR_L.magnitude;
+    log.Motor_Right = (int8_t)MOTOR_R.magnitude;
     log.Distance_Left = (uint16_t)(TOF_sb_left_result.Distance > 4095 ? 4095 : TOF_sb_left_result.Distance);
     log.Distance_Front_Left = (uint16_t)(TOF_sb_front_left_result.Distance > 4095 ? 4095 : TOF_sb_front_left_result.Distance);
     log.Distance_Centre = (uint16_t)(TOF_sb_front_result.Distance > 4095 ? 4095 : TOF_sb_front_result.Distance);
@@ -708,8 +589,8 @@ void refreshLoggedData() {
                 
                 // Turn off motor control FET
                 HAL_GPIO_WritePin(MOTOR_EN_GPIO_Port, MOTOR_EN_Pin, GPIO_PIN_RESET);
-        MOTOR_LS = 0;
-        MOTOR_RS = 0;
+        MOTOR_L.magnitude = 0;
+        MOTOR_R.magnitude = 0;
                 
                 // Display on OLED
                 snprintf(SSD1306_Data.oled_string1, sizeof(SSD1306_Data.oled_string1), "LOGS FULL!");
@@ -773,8 +654,6 @@ void initMicroMouse(){
   initLogs();
 }
 
-bool simulink_talking = false;
-
 #define STARTUP_HOLD_MS 5000
 
 void updateMicroMouse(){
@@ -811,21 +690,13 @@ void updateMicroMouse(){
 
   // Block motors for the first STARTUP_HOLD_MS milliseconds after boot
   if (HAL_GetTick() < STARTUP_HOLD_MS) {
-    MOTOR_LS = 0;
-    MOTOR_RS = 0;
+    MOTOR_L.magnitude = 0;
+    MOTOR_R.magnitude = 0;
   }
 
   refreshMotors();
   refreshLoggedData();
 }
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-  if(huart->Instance == USART1){
-    simulink_talking = true;
-    recievedFromSimulink();
-  }
-}
-
 
 void main(void)
 {
@@ -846,7 +717,6 @@ void main(void)
   MX_TIM4_Init();
   MX_TIM5_Init();
   MX_TIM7_Init();
-  MX_USART1_UART_Init();
   MX_NVIC_Init();
 
 
@@ -857,8 +727,6 @@ void main(void)
   configureTimer(100, TIM5); // Example: configure TIM1 for a frequency of 1000 Hz
 
   HAL_TIM_Base_Start_IT(&htim5);
-
-  HAL_UART_Receive_DMA(&huart1,(uint8_t *) &bigBuffer, sizeof(bigBuffer));
 
   while (1)
   {
@@ -944,9 +812,6 @@ void SystemClock_Config(void)
   /* RCC_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(RCC_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(RCC_IRQn);
-  /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
   /* ADC1_2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
@@ -957,14 +822,17 @@ void SystemClock_Config(void)
   HAL_NVIC_SetPriority(TIM5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM5_IRQn);
   /* DMA2_Channel6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel6_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Channel6_IRQn);
+  NVIC_SetPriority(DMA2_Channel6_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(DMA2_Channel6_IRQn);
   /* DMA2_Channel7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);
+  NVIC_SetPriority(DMA2_Channel7_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(DMA2_Channel7_IRQn);
   /* TIM7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM7_IRQn);
+  /* DMA2_Channel3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel3_IRQn);
 }
 
 /**
@@ -1313,8 +1181,17 @@ void MX_TIM3_Init(void)
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
   {
     Error_Handler();
@@ -1344,7 +1221,7 @@ void MX_TIM4_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_IC_InitTypeDef sConfigIC = {0};
 
   /* USER CODE BEGIN TIM4_Init 1 */
 
@@ -1364,7 +1241,7 @@ void MX_TIM4_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  if (HAL_TIM_IC_Init(&htim4) != HAL_OK)
   {
     Error_Handler();
   }
@@ -1374,22 +1251,29 @@ void MX_TIM4_Init(void)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+  sConfigIC.ICFilter = 0;
+  if (HAL_TIM_IC_ConfigChannel(&htim4, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  if (HAL_TIM_IC_ConfigChannel(&htim4, &sConfigIC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_IC_ConfigChannel(&htim4, &sConfigIC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_IC_ConfigChannel(&htim4, &sConfigIC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
   }
   /* USER CODE BEGIN TIM4_Init 2 */
 
   /* USER CODE END TIM4_Init 2 */
-  HAL_TIM_MspPostInit(&htim4);
 
 }
 
@@ -1488,23 +1372,85 @@ void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 0 */
 
-  /* USER CODE BEGIN USART1_Init 1 */
+  LL_USART_InitTypeDef USART_InitStruct = {0};
 
-  /* USER CODE END USART1_Init 1 */
-  huart1.Instance = USART1;
-  huart1.Init.BaudRate = 1843200;
-  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-  huart1.Init.StopBits = UART_STOPBITS_1;
-  huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_TX_RX;
-  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart1) != HAL_OK)
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
+
+  /** Initializes the peripherals clock
+  */
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1;
+  PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
+
+  /* Peripheral clock enable */
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_USART1);
+
+  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
+  /**USART1 GPIO Configuration
+  PB6   ------> USART1_TX
+  PB7   ------> USART1_RX
+  */
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_6|LL_GPIO_PIN_7;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
+  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* USART1 DMA Init */
+
+  /* USART1_RX Init */
+  LL_DMA_SetPeriphRequest(DMA2, LL_DMA_CHANNEL_7, LL_DMA_REQUEST_2);
+
+  LL_DMA_SetDataTransferDirection(DMA2, LL_DMA_CHANNEL_7, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+
+  LL_DMA_SetChannelPriorityLevel(DMA2, LL_DMA_CHANNEL_7, LL_DMA_PRIORITY_LOW);
+
+  LL_DMA_SetMode(DMA2, LL_DMA_CHANNEL_7, LL_DMA_MODE_NORMAL);
+
+  LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_CHANNEL_7, LL_DMA_PERIPH_NOINCREMENT);
+
+  LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_CHANNEL_7, LL_DMA_MEMORY_INCREMENT);
+
+  LL_DMA_SetPeriphSize(DMA2, LL_DMA_CHANNEL_7, LL_DMA_PDATAALIGN_BYTE);
+
+  LL_DMA_SetMemorySize(DMA2, LL_DMA_CHANNEL_7, LL_DMA_MDATAALIGN_BYTE);
+
+  /* USART1_TX Init */
+  LL_DMA_SetPeriphRequest(DMA2, LL_DMA_CHANNEL_6, LL_DMA_REQUEST_2);
+
+  LL_DMA_SetDataTransferDirection(DMA2, LL_DMA_CHANNEL_6, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+
+  LL_DMA_SetChannelPriorityLevel(DMA2, LL_DMA_CHANNEL_6, LL_DMA_PRIORITY_LOW);
+
+  LL_DMA_SetMode(DMA2, LL_DMA_CHANNEL_6, LL_DMA_MODE_NORMAL);
+
+  LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_CHANNEL_6, LL_DMA_PERIPH_NOINCREMENT);
+
+  LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_CHANNEL_6, LL_DMA_MEMORY_INCREMENT);
+
+  LL_DMA_SetPeriphSize(DMA2, LL_DMA_CHANNEL_6, LL_DMA_PDATAALIGN_BYTE);
+
+  LL_DMA_SetMemorySize(DMA2, LL_DMA_CHANNEL_6, LL_DMA_MDATAALIGN_BYTE);
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  USART_InitStruct.BaudRate = 1843200;
+  USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
+  USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
+  USART_InitStruct.Parity = LL_USART_PARITY_NONE;
+  USART_InitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
+  USART_InitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
+  USART_InitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
+  LL_USART_Init(USART1, &USART_InitStruct);
+  LL_USART_ConfigAsyncMode(USART1);
+  LL_USART_Enable(USART1);
   /* USER CODE BEGIN USART1_Init 2 */
 
   /* USER CODE END USART1_Init 2 */
@@ -1517,9 +1463,9 @@ void MX_USART1_UART_Init(void)
 void MX_DMA_Init(void)
 {
 
+  /* Init with LL driver */
   /* DMA controller clock enable */
-  __HAL_RCC_DMA2_CLK_ENABLE();
-  __HAL_RCC_DMA1_CLK_ENABLE();
+  LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA2);
 
 }
 
@@ -1586,11 +1532,9 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PC0 PC1 PC2 PC3
-                           PC6 PC7 PC10 PC11
-                           PC12 */
+                           PC10 PC11 PC12 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
-                          |GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_10|GPIO_PIN_11
-                          |GPIO_PIN_12;
+                          |GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -1622,13 +1566,11 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(SW2_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PD8 PD9 PD10 PD11
-                           PD14 PD15 PD0 PD1
-                           PD2 PD3 PD4 PD5
-                           PD6 */
+                           PD0 PD1 PD2 PD3
+                           PD4 PD5 PD6 */
   GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
-                          |GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1
-                          |GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5
-                          |GPIO_PIN_6;
+                          |GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
+                          |GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);

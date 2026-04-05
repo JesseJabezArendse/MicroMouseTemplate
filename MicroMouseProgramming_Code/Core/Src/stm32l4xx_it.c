@@ -22,6 +22,7 @@
 #include "stm32l4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -65,13 +66,13 @@ extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim5;
 extern TIM_HandleTypeDef htim7;
-extern DMA_HandleTypeDef hdma_usart1_rx;
-extern DMA_HandleTypeDef hdma_usart1_tx;
-extern UART_HandleTypeDef huart1;
 extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN EV */
 extern uint8_t readyToLog;
+#ifdef HAL_UART_MODULE_ENABLED
+extern DMA_HandleTypeDef hdma_usart1_rx;
+#endif
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -205,20 +206,6 @@ void RCC_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles DMA1 channel1 global interrupt.
-  */
-void DMA1_Channel1_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
-
-  /* USER CODE END DMA1_Channel1_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_adc1);
-  /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel1_IRQn 1 */
-}
-
-/**
   * @brief This function handles ADC1 and ADC2 interrupts.
   */
 void ADC1_2_IRQHandler(void)
@@ -275,20 +262,6 @@ void TIM4_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles USART1 global interrupt.
-  */
-void USART1_IRQHandler(void)
-{
-  /* USER CODE BEGIN USART1_IRQn 0 */
-
-  /* USER CODE END USART1_IRQn 0 */
-  HAL_UART_IRQHandler(&huart1);
-  /* USER CODE BEGIN USART1_IRQn 1 */
-
-  /* USER CODE END USART1_IRQn 1 */
-}
-
-/**
   * @brief This function handles TIM5 global interrupt.
   */
 void TIM5_IRQHandler(void)
@@ -334,14 +307,27 @@ void TIM7_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles DMA2 channel3 global interrupt.
+  */
+void DMA2_Channel3_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Channel3_IRQn 0 */
+
+  /* USER CODE END DMA2_Channel3_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_adc1);
+  /* USER CODE BEGIN DMA2_Channel3_IRQn 1 */
+
+  /* USER CODE END DMA2_Channel3_IRQn 1 */
+}
+
+/**
   * @brief This function handles DMA2 channel6 global interrupt.
   */
-void DMA2_Channel6_IRQHandler(void)
+__attribute__((weak)) void DMA2_Channel6_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA2_Channel6_IRQn 0 */
 
   /* USER CODE END DMA2_Channel6_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_usart1_tx);
   /* USER CODE BEGIN DMA2_Channel6_IRQn 1 */
 
   /* USER CODE END DMA2_Channel6_IRQn 1 */
@@ -350,14 +336,14 @@ void DMA2_Channel6_IRQHandler(void)
 /**
   * @brief This function handles DMA2 channel7 global interrupt.
   */
-void DMA2_Channel7_IRQHandler(void)
+__attribute__((weak)) void DMA2_Channel7_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA2_Channel7_IRQn 0 */
-
-  /* USER CODE END DMA2_Channel7_IRQn 0 */
+#ifdef HAL_UART_MODULE_ENABLED
   HAL_DMA_IRQHandler(&hdma_usart1_rx);
+#endif
+  /* USER CODE END DMA2_Channel7_IRQn 0 */
   /* USER CODE BEGIN DMA2_Channel7_IRQn 1 */
-
   /* USER CODE END DMA2_Channel7_IRQn 1 */
 }
 

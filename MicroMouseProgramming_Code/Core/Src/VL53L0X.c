@@ -43,7 +43,7 @@ uint8_t g_stopVariable; // read by init and used when starting measurement; is S
 uint32_t g_measTimBudUs;
 
 
-uint16_t VL53L0_address_default = 0x52;
+uint8_t VL53L0_address_default = 0x52;
 uint8_t newToFAddress_L  = 0x54;
 uint8_t newToFAddress_FL = 0x5A;
 uint8_t newToFAddress_C  = 0x60;
@@ -196,7 +196,7 @@ bool initVL53L0X(bool io_2v8, I2C_HandleTypeDef *handler){
   }
 
   // "Set I2C standard mode"
-  writeReg(VL53L0X_I2C_MODE, VL53L0X_I2C_STANDARD_MODE);
+  writeReg(VL53L0X_I2C_MODE, VL53L0X_I2C_FAST_MODE);
 
   writeReg(0x80, 0x01);
   writeReg(0xFF, 0x01);
@@ -417,10 +417,14 @@ bool setSignalRateLimit(uint16_t limit_kcps) {
 
 void initVL53L0(VL53L0_t *tof, uint16_t signalRate){
   HAL_GPIO_WritePin(tof->XSHUT_Port, tof->XSHUT_Pin, GPIO_PIN_SET);
-  HAL_Delay(10);
+  HAL_Delay(50);
+
+  // Set the global I2C handler for this sensor
+  VL53L0X_I2C_Handler = tof->I2Cx;
+  g_i2cAddr = ADDRESS_DEFAULT;
 
   uint8_t status = 0;
-  status = initVL53L0X(0, tof->I2Cx);
+  status = initVL53L0X(1, tof->I2Cx);
   if (status == false){ 
     restartI2C(tof->I2Cx);
     return;
@@ -568,7 +572,7 @@ void initTOFs(uint16_t signalRate){
   HAL_GPIO_WritePin(XSHUT7_GPIO_Port, XSHUT7_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(XSHUT8_GPIO_Port, XSHUT8_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(XSHUT9_GPIO_Port, XSHUT9_Pin, GPIO_PIN_RESET);
-  HAL_Delay(50);
+  HAL_Delay(200);
 
   // Enable each sensor one at a time and initialise it
   initVL53L0(&TOF_sb_left_result, signalRate);
@@ -577,9 +581,9 @@ void initTOFs(uint16_t signalRate){
   initVL53L0(&TOF_sb_front_right_result, signalRate);
   initVL53L0(&TOF_sb_right_result, signalRate);
   initVL53L0(&TOF_mb_back_result, signalRate);
-  // initVL53L0(&TOF_mb_front_result, signalRate);
-  // initVL53L0(&TOF_mb_front_left_result, signalRate);
-  // initVL53L0(&TOF_mb_front_right_result, signalRate);
+  initVL53L0(&TOF_mb_front_result, signalRate);
+  initVL53L0(&TOF_mb_front_left_result, signalRate);
+  initVL53L0(&TOF_mb_front_right_result, signalRate);
 
   setTimeout(5);
 }

@@ -20,9 +20,10 @@ SERIAL_PORT = 'COM3'  # Change this to your serial port
 SERIAL_BAUD = 1843200
 MAX_DATA_POINTS = 100
 
-# Serial packet constants (packet = 3-byte header 'J_A' + 216 bytes payload = 219 total)
+# Serial packet constants (packet = 3-byte header 'J_A' + payload)
+# Layout: J_A(3) + SW(8) + IMU(28) + 6xTOF(96) + 5xADC(20) + INA219(12) + counter(4) + encoderRates(4) = 175
 PACKET_HEADER = b'J_A'
-PACKET_SIZE = 219
+PACKET_SIZE = 175
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -60,8 +61,12 @@ class MicroMouseData:
         # Actuator state
         self.motor_left = 0
         self.motor_right = 0
+        self.encoder_rate_left = 0
+        self.encoder_rate_right = 0
         self.led_status = [False, False, False]
         self.button_status = [False, False]
+        self.oled_strings = [b'\x00' * 18] * 5
+        self.state_byte = 0
         
         # History for plotting
         self.history = {
@@ -78,6 +83,8 @@ class MicroMouseData:
             'battery_voltage': deque(maxlen=MAX_DATA_POINTS),
             'imu_accel_x': deque(maxlen=MAX_DATA_POINTS),
             'imu_gyro_z': deque(maxlen=MAX_DATA_POINTS),
+            'encoder_rate_left': deque(maxlen=MAX_DATA_POINTS),
+            'encoder_rate_right': deque(maxlen=MAX_DATA_POINTS),
         }
         self.last_update = time.time()
 
@@ -103,7 +110,7 @@ def disconnect_serial():
         logger.info("Disconnected from serial")
 
 def parse_serial_data(raw_data):
-    """Parse 171-byte binary packet from MicroMouse (header 'J_A' + payload)"""
+    """Parse 175-byte binary packet from MicroMouse (header 'J_A' + payload)"""
     try:
         if len(raw_data) < PACKET_SIZE or raw_data[0:3] != PACKET_HEADER:
             return
@@ -124,21 +131,23 @@ def parse_serial_data(raw_data):
             data.tof_front_right   = struct.unpack('<I', raw_data[87:91])[0]
             data.tof_right         = struct.unpack('<I', raw_data[103:107])[0]
             data.tof_mb_back       = struct.unpack('<I', raw_data[119:123])[0]
-            data.tof_mb_front      = struct.unpack('<I', raw_data[135:139])[0]
-            data.tof_mb_front_left = struct.unpack('<I', raw_data[151:155])[0]
-            data.tof_mb_front_right= struct.unpack('<I', raw_data[167:171])[0]
+            # mb_front/mb_front_left/mb_front_right not sent by MCU; leave as 0
 
-            # ADC (offset 183, 5 x uint16 each sent twice, take first copy)
-            data.adc_values[0] = struct.unpack('<H', raw_data[183:185])[0]
-            data.adc_values[1] = struct.unpack('<H', raw_data[187:189])[0]
-            data.adc_values[2] = struct.unpack('<H', raw_data[191:193])[0]
-            data.adc_values[3] = struct.unpack('<H', raw_data[195:197])[0]
-            data.adc_values[4] = struct.unpack('<H', raw_data[199:201])[0]
+            # ADC (offset 135, 5 x uint16 each sent twice, take first copy)
+            data.adc_values[0] = struct.unpack('<H', raw_data[135:137])[0]
+            data.adc_values[1] = struct.unpack('<H', raw_data[139:141])[0]
+            data.adc_values[2] = struct.unpack('<H', raw_data[143:145])[0]
+            data.adc_values[3] = struct.unpack('<H', raw_data[147:149])[0]
+            data.adc_values[4] = struct.unpack('<H', raw_data[151:153])[0]
 
-            # Battery (offset 203: Vbattery, Vshunt, Current, Power as int16 in mV/mA; batteryLife as int8)
-            data.battery_voltage = struct.unpack('<h', raw_data[203:205])[0] / 1000.0
-            data.battery_current = struct.unpack('<h', raw_data[207:209])[0] / 1000.0
-            data.battery_pct     = struct.unpack('<b', raw_data[211:212])[0]
+            # Battery (offset 155: Vbattery(2), Vshunt(2), Current(2), Power(2), batteryLife(4x1))
+            data.battery_voltage = struct.unpack('<h', raw_data[155:157])[0] / 1000.0
+            data.battery_current = struct.unpack('<h', raw_data[159:161])[0] / 1000.0
+            data.battery_pct     = struct.unpack('<b', raw_data[163:164])[0]
+
+            # Motor encoder rates (offset 171, 2 x int16, RPM signed)
+            data.encoder_rate_left  = struct.unpack('<h', raw_data[171:173])[0]
+            data.encoder_rate_right = struct.unpack('<h', raw_data[173:175])[0]
 
             # History
             data.history['timestamps'].append(datetime.now().isoformat())
@@ -148,12 +157,11 @@ def parse_serial_data(raw_data):
             data.history['tof_front_right'].append(data.tof_front_right)
             data.history['tof_right'].append(data.tof_right)
             data.history['tof_mb_back'].append(data.tof_mb_back)
-            data.history['tof_mb_front'].append(data.tof_mb_front)
-            data.history['tof_mb_front_left'].append(data.tof_mb_front_left)
-            data.history['tof_mb_front_right'].append(data.tof_mb_front_right)
             data.history['battery_voltage'].append(data.battery_voltage)
             data.history['imu_accel_x'].append(data.imu_accel[0])
             data.history['imu_gyro_z'].append(data.imu_gyro[2])
+            data.history['encoder_rate_left'].append(data.encoder_rate_left)
+            data.history['encoder_rate_right'].append(data.encoder_rate_right)
     except Exception as e:
         logger.warning(f"Error parsing data: {e}")
 
@@ -182,27 +190,38 @@ def read_serial_thread():
             data.is_connected = False
             time.sleep(1)
 
+def build_command_packet():
+    """
+    Build the 102-byte J_A...A_J command packet sent to the MCU.
+    Layout: J_A(3) + LED[0-2](3) + MOTOR_L(1,int8) + MOTOR_R(1,int8)
+            + oled_string1..5 (5*18=90) + STATE(1) + A_J(3) = 102 bytes
+    """
+    leds   = bytes([int(b) for b in data.led_status])
+    mot_l  = struct.pack('b', max(-100, min(100, int(data.motor_left))))
+    mot_r  = struct.pack('b', max(-100, min(100, int(data.motor_right))))
+    oled   = b''.join(s[:18].ljust(18, b'\x00') for s in data.oled_strings)
+    state  = bytes([data.state_byte])
+    return b'J_A' + leds + mot_l + mot_r + oled + state + b'A_J'
+
+
 def send_command(command_type, value):
     """Send a command to MicroMouse"""
     if not data.is_connected or not data.serial_connection:
         return False
     
     try:
-        # Format: [command_type, value1, value2, ...]
         if command_type == 'motor':
-            # value = {'left': speed, 'right': speed}
-            cmd = struct.pack('B', 0x01) + struct.pack('h', value['left']) + struct.pack('h', value['right'])
-            data.serial_connection.write(cmd)
             with data.lock:
-                data.motor_left = value['left']
+                data.motor_left  = value['left']
                 data.motor_right = value['right']
+            cmd = build_command_packet()
+            data.serial_connection.write(cmd)
             return True
         elif command_type == 'led':
-            # value = [led0_state, led1_state, led2_state]
-            cmd = struct.pack('B', 0x02) + struct.pack('BBB', *value)
-            data.serial_connection.write(cmd)
             with data.lock:
                 data.led_status = value
+            cmd = build_command_packet()
+            data.serial_connection.write(cmd)
             return True
         return False
     except Exception as e:
@@ -229,10 +248,7 @@ def get_status():
                     'centre': data.tof_centre,
                     'front_right': data.tof_front_right,
                     'right': data.tof_right,
-                    'mb_back': data.tof_mb_back,
-                    'mb_front': data.tof_mb_front,
-                    'mb_front_left': data.tof_mb_front_left,
-                    'mb_front_right': data.tof_mb_front_right,
+                    'back': data.tof_mb_back,
                 },
                 'imu': {
                     'accel': data.imu_accel,
@@ -250,6 +266,8 @@ def get_status():
                 'motors': {
                     'left': data.motor_left,
                     'right': data.motor_right,
+                    'encoder_rate_left': data.encoder_rate_left,
+                    'encoder_rate_right': data.encoder_rate_right,
                 },
                 'leds': data.led_status,
                 'buttons': data.button_status,
@@ -268,12 +286,11 @@ def get_history():
             'tof_front_right': list(data.history['tof_front_right']),
             'tof_right': list(data.history['tof_right']),
             'tof_mb_back': list(data.history['tof_mb_back']),
-            'tof_mb_front': list(data.history['tof_mb_front']),
-            'tof_mb_front_left': list(data.history['tof_mb_front_left']),
-            'tof_mb_front_right': list(data.history['tof_mb_front_right']),
             'battery_voltage': list(data.history['battery_voltage']),
             'imu_accel_x': list(data.history['imu_accel_x']),
             'imu_gyro_z': list(data.history['imu_gyro_z']),
+            'encoder_rate_left': list(data.history['encoder_rate_left']),
+            'encoder_rate_right': list(data.history['encoder_rate_right']),
         })
 
 @app.route('/api/connect', methods=['POST'])
