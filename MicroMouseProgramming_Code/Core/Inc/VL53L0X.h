@@ -275,7 +275,7 @@ uint8_t getAddress_VL53L0X(void);
 // Iniitializes and configures the sensor. 
 // If the optional argument io_2v8 is 1, the sensor is configured for 2V8 mode (2.8 V I/O); 
 // if 0, the sensor is left in 1V8 mode. Returns 1 if the initialization completed successfully.
-uint8_t initVL53L0X(bool io_2v8, I2C_HandleTypeDef *handler);
+bool initVL53L0X(bool io_2v8, I2C_HandleTypeDef *handler);
 
 // Sets the return signal rate limit to the given value in units of MCPS (mega counts per second). 
 // This is the minimum amplitude of the signal reflected from the target and received by the sensor 
@@ -295,7 +295,7 @@ float getSignalRateLimit(void);
 // factor of N decreases the range measurement standard deviation by a factor of
 // sqrt(N). Defaults to about 33 milliseconds; the minimum is 20 ms.
 // based on VL53L0X_set_measurement_timing_budget_micro_seconds()
-uint8_t setMeasurementTimingBudget(uint32_t budget_us);
+bool setMeasurementTimingBudget(uint32_t budget_us);
 
 // Returns the current measurement timing budget in microseconds.
 uint32_t getMeasurementTimingBudget(void);
@@ -306,7 +306,7 @@ uint32_t getMeasurementTimingBudget(void);
 // Pre: 12 to 18 (initialized to 14 by default)
 // Final: 8 to 14 (initialized to 10 by default)
 // The return value is a boolean indicating whether the requested period was valid.
-uint8_t setVcselPulsePeriod(vcselPeriodType type, uint8_t period_pclks);
+bool setVcselPulsePeriod(vcselPeriodType type, uint8_t period_pclks);
 
 // Returns the current VCSEL pulse period for the given period type.
 uint8_t getVcselPulsePeriod(vcselPeriodType type);
