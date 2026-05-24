@@ -29,11 +29,11 @@ extern I2C_HandleTypeDef hi2c2;
 #define SCREEN_FONT_DYNAMIC
 #endif
 
-char oled_string1[18] = "UCT MICROMOUSE '25";
-char oled_string2[18] = "                  ";
-char oled_string3[18] = "                  ";
-char oled_string4[18] = "                  ";
-char oled_string5[18] = "                  ";
+char oled_string1[19] = "UCT MICROMOUSE '25";
+char oled_string2[19] = "                  ";
+char oled_string3[19] = "                  ";
+char oled_string4[19] = "                  ";
+char oled_string5[19] = "                  ";
 
 /* Write command */
 #define SSD1306_WRITECOMMAND(command)      SSD1306_I2C_Write(SSD1306_I2C_ADDR, 0x00, (command))
@@ -1025,7 +1025,6 @@ void refreshScreen() {
 	if (!SSD1306.Initialized) return;
 #ifdef SCREEN_FONT_DYNAMIC
     uint16_t y_position = 0; // Start at the top of the screen
-    uint16_t max_width = SSD1306_WIDTH; // Maximum width of the screen
     uint16_t max_height = SSD1306_HEIGHT; // Maximum height of the screen
     uint16_t remaining_height = max_height; // Remaining height for dynamic font sizes
 

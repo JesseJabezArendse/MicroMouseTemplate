@@ -135,9 +135,7 @@ enum VL53L0X_Error {
 //------------------------------------------------------------
 // For quick and dirty C++ compatibility
 //------------------------------------------------------------
-#define bool  uint8_t
-#define true  1
-#define false 0
+#include <stdbool.h>
 
 //------------------------------------------------------------
 // Defines

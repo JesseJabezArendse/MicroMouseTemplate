@@ -70,7 +70,7 @@ DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
-bool enable_legacy_telemetry = false; // Set to false to prevent UART collisions
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -125,11 +125,11 @@ extern VL53L0_t TOF_left_result;
 extern VL53L0_t TOF_centre_result;
 extern VL53L0_t TOF_right_result;
 
-extern char oled_string1[18];
-extern char oled_string2[18];
-extern char oled_string3[18];
-extern char oled_string4[18];
-extern char oled_string5[18];
+extern char oled_string1[19];
+extern char oled_string2[19];
+extern char oled_string3[19];
+extern char oled_string4[19];
+extern char oled_string5[19];
 
 extern uint8_t LED[3];
 extern uint8_t SW[2];
@@ -153,7 +153,7 @@ uint8_t log_time_counter = 0;
 uint8_t LOG_VERSION = 1;
 uint8_t LOG_SAMPLING_RATE_HZ = 25;  // Will be dynamically calculated in initLogs()
 uint8_t EXPECTED_MINUTES = 5;
-uint8_t STUDENT_NUMBER[9] = "ABCDEF123";  // 9 characters
+uint8_t STUDENT_NUMBER[9] = {'A','B','C','D','E','F','1','2','3'};  // 9 characters
 
 // Flash region detection structures (populated during initLogs)
 #define FLASH_END 0x08080000
@@ -207,53 +207,51 @@ void configureTimer(float desired_frequency, TIM_TypeDef* tim) {
 }
 
 void sendToSimulink(){
-    if (!enable_legacy_telemetry) return;
-
     HAL_UART_Transmit(&huart1, (uint8_t *) "J_A"           ,3 , HAL_MAX_DELAY);
 
     // Switches
-    HAL_UART_Transmit(&huart1,(float_t*)  &SW1     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,(float_t *) &SW2     ,4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,(const uint8_t*)  &SW1     ,4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,(const uint8_t *) &SW2     ,4 , HAL_MAX_DELAY);
 
   // IMU
-    HAL_UART_Transmit(&huart1, &IMU_Accel[0]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &IMU_Accel[1]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &IMU_Accel[2]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &IMU_Gyro[0]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &IMU_Gyro[1]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &IMU_Gyro[2]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &IMU_Temp         ,4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Accel[0]     ,4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Accel[1]     ,4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Accel[2]     ,4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Gyro[0]     ,4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Gyro[1]     ,4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Gyro[2]     ,4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Temp         ,4 , HAL_MAX_DELAY);
 
 
   // TOF
-    HAL_UART_Transmit(&huart1, &(TOF_left_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &(TOF_left_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &(TOF_left_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, &(TOF_left_result.Status  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_centre_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_centre_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_centre_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_centre_result.Status  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_right_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_right_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_right_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(TOF_right_result.Status  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_left_result.Distance)  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_left_result.Ambient )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_left_result.Signal  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_left_result.Status  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_centre_result.Distance)  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_centre_result.Ambient )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_centre_result.Signal  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_centre_result.Status  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_right_result.Distance)  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_right_result.Ambient )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_right_result.Signal  )  , 4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_right_result.Status  )  , 4 , HAL_MAX_DELAY);
 
     // VBAT, MOT_RS , DOWN_RS , DOWN_LS , MOT_LS
-    HAL_UART_Transmit(&huart1,  &(ADCs[0]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(ADCs[0]  )  , 2 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[0]  )  , 2 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[0]  )  , 2 , HAL_MAX_DELAY);
 
-    HAL_UART_Transmit(&huart1,  &(ADCs[1]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(ADCs[1]  )  , 2 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[1]  )  , 2 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[1]  )  , 2 , HAL_MAX_DELAY);
 
-    HAL_UART_Transmit(&huart1,  &(ADCs[2]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(ADCs[2]  )  , 2 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[2]  )  , 2 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[2]  )  , 2 , HAL_MAX_DELAY);
 
-    HAL_UART_Transmit(&huart1,  &(ADCs[3]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(ADCs[3]  )  , 2 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[3]  )  , 2 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[3]  )  , 2 , HAL_MAX_DELAY);
 
-    HAL_UART_Transmit(&huart1,  &(ADCs[4]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  &(ADCs[4]  )  , 2 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[4]  )  , 2 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[4]  )  , 2 , HAL_MAX_DELAY);
 
     // INA219
     HAL_UART_Transmit(&huart1, (uint8_t *) &Vbattery     ,2 , HAL_MAX_DELAY);
@@ -267,7 +265,7 @@ void sendToSimulink(){
 
 
 
-    HAL_UART_Transmit(&huart1, (uint32_t *) &counter         ,4 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (const uint8_t *) &counter         ,4 , HAL_MAX_DELAY);
     // HAL_UART_Transmit(&huart1, (uint8_t *) "A_J"      ,3 , HAL_MAX_DELAY);
 }
 
@@ -279,7 +277,7 @@ void recievedFromSimulink(){
     // Extract and verify terminator bytes
     memcpy(terminator, bigBuffer + (sizeof(bigBuffer) - 3), 3);
     
-    if (terminator[0] == expectedTerminator[0] & terminator[1] == expectedTerminator[1] && terminator[2] == expectedTerminator[2]){
+    if (terminator[0] == expectedTerminator[0] && terminator[1] == expectedTerminator[1] && terminator[2] == expectedTerminator[2]){
         LED[0] = bigBuffer[3];
         LED[1] = bigBuffer[4];
         LED[2] = bigBuffer[5];
@@ -750,6 +748,8 @@ void initMicroMouse(){
   uint8_t found2[5];
   uint8_t num1 = I2C_Scan(&hi2c1, found1, 1);
   uint8_t num2 = I2C_Scan(&hi2c2, found2, 5);
+  (void)num1;
+  (void)num2;
 
   initScreen();
   initINA219();
@@ -787,6 +787,18 @@ void updateMicroMouse(){
   int vbatt_mv = (int)Vbattery;
   int current_ma = (int)Current;
   int batt_pct = (int)batteryLife;
+  (void)left_mm;
+  (void)centre_mm;
+  (void)right_mm;
+  (void)accel_x;
+  (void)accel_y;
+  (void)accel_z;
+  (void)gyro_x;
+  (void)gyro_y;
+  (void)gyro_z;
+  (void)vbatt_mv;
+  (void)current_ma;
+  (void)batt_pct;
 
 
   refreshLEDs();
@@ -813,7 +825,6 @@ void main(void)
 
   // Configure the system clock
   SystemClock_Config();
-  SystemCoreClockUpdate(); // Fixes the 11% to 80% baud rate drift
 
   // Initialize all configured peripherals
   MX_DMA_Init();

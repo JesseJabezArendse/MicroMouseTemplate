@@ -219,7 +219,7 @@ float INA219_GetAVGMiliWatt(INA219_t *ina219)
 		}
 
 	}
-	for(int i=0; i< (sizeof(sample)/sizeof(sample[0])); i++)
+	for(unsigned int i=0; i< (sizeof(sample)/sizeof(sample[0])); i++)
 	{
 		energy += sample[i];
 	}
@@ -245,6 +245,7 @@ float INA219_GetAVGMiliWatt(INA219_t *ina219)
  */
 enum BatteryState INA219_HealthCheck(INA219_t *ina219,float batteryPercentageThreshold,float batteryPercentage)
 {
+	(void)ina219;
 	switch(batteryState)
 	{
 		case (Battery_START):

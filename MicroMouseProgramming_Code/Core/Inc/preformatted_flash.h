@@ -13,11 +13,15 @@
 
 #define USB_FLASH_START_ADDRESS   0x08040000  
 #define USB_LOG_DATA_ADDRESS      0x08040000  
+#ifndef FLASH_PAGE_SIZE
 #define FLASH_PAGE_SIZE 0x800
+#endif
 #define TOTAL_USB_DEVICE_SIZE   ( STORAGE_BLK_NBR * STORAGE_BLK_SIZ )
 
 #define GAP_PAGES 2  // 3 pages (6KB) gap between code and log for safety
+#ifndef FLASH_END
 #define FLASH_END 0x08080000  // 512KB flash end
+#endif
 #define FLASH_MID 0x08040000  // Start scanning from middle
 
 // Utility: Get flash page start address for STM32L476VE (FLASH_PAGE_SIZE = 2048)
@@ -31,10 +35,6 @@
     #define STORAGE_BLK_SIZ                  0x200
     #define USB_PREFORMATED_SIZE             72*1024
 #endif
-
-#define STM32L476_FLASH_BASE 0x08000000
-#define STM32L476_FLASH_PAGE_SIZE 2048
-#define STM32L476_NUM_PAGES 128
 
 uint32_t GetPage(uint32_t Address);
 void float2Bytes(uint8_t *ftoa_bytes_temp, float float_variable);
@@ -72,7 +72,7 @@ float Flash_Read_NUM(uint32_t StartSectorAddress);
 #define USB_BUFFER_SIZE (2*1024)
 #define LOG_FLASH_PAGE_SIZE  0x800
 
-#define USB_PREFORMATED (((const uint8_t*)USB_FLASH_START_ADDRESS))
+#define USB_PREFORMATED (((uint8_t*)USB_FLASH_START_ADDRESS))
 
 // Function to get a pointer to the preformatted data
 uint8_t* get_preformatted_data(void);

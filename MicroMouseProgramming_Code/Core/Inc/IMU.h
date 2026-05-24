@@ -39,6 +39,9 @@
 //====================================================================
 // ICM-42605 I2C CONFIGURATION
 //====================================================================
+#ifdef I2C_TIMEOUT
+#undef I2C_TIMEOUT
+#endif
 #define ICM42605_I2C_ADDRESS    0x68  // 7-bit address (0xD0 write, 0xD1 read in 8-bit)
 #define I2C_TIMEOUT             100   // I2C timeout in ms
 

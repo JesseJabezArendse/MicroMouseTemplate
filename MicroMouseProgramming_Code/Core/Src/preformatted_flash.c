@@ -128,9 +128,7 @@ float Bytes2float(uint8_t *ftoa_bytes_temp)
 
 uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint8_t *Data, uint32_t numBytes)
 {
-    uint32_t StartPage = GetPage(StartPageAddress);
     uint32_t EndPageAddress = StartPageAddress + numBytes;
-    uint32_t EndPage = GetPage(EndPageAddress);
     
     // Disable instruction cache for flash operations
     __HAL_FLASH_INSTRUCTION_CACHE_DISABLE();
@@ -197,7 +195,9 @@ uint8_t USB_storage_buffer[STORAGE_BLK_NBR*STORAGE_BLK_SIZ];
 uint8_t UID[12] = {0};
 
 
+#ifndef UID_BASE
 #define UID_BASE 0x1FFF7590
+#endif
 
 void initPreFormatedFlash(void) {
     uint8_t UID[12];
@@ -251,4 +251,3 @@ uint8_t* get_preformatted_data(void) {
 uint32_t get_preformatted_data_size(void) {
     return USB_PREFORMATED_SIZE;
 }
-

@@ -18,6 +18,9 @@
 #include "VL53L0X.h"
 #include "main.h"
 
+#ifdef I2C_TIMEOUT
+#undef I2C_TIMEOUT
+#endif
 #define I2C_TIMEOUT 10 // I2C timeout in ms
 #define I2C_READ 1
 #define I2C_WRITE 0
@@ -426,7 +429,6 @@ void initVL53L0(uint8_t newToFAddress, uint16_t signalRate){
 }
 
 void calibrateToF(VL53L0_t* TOF_result , uint16_t distance) {
-    uint16_t signalRate = TOF_result->Signal; // Signal rate read from the sensor in kcps
     uint8_t PreRange = 12; // Default PreRange
     uint8_t FinalRange = 8; // Default FinalRange
     uint32_t timingBudget = 33000; // Default timing budget in microseconds (33 ms)
