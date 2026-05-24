@@ -70,7 +70,7 @@ DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
-
+bool enable_legacy_telemetry = false; // Set to false to prevent UART collisions
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -207,6 +207,8 @@ void configureTimer(float desired_frequency, TIM_TypeDef* tim) {
 }
 
 void sendToSimulink(){
+    if (!enable_legacy_telemetry) return;
+
     HAL_UART_Transmit(&huart1, (uint8_t *) "J_A"           ,3 , HAL_MAX_DELAY);
 
     // Switches
@@ -811,6 +813,7 @@ void main(void)
 
   // Configure the system clock
   SystemClock_Config();
+  SystemCoreClockUpdate(); // Fixes the 11% to 80% baud rate drift
 
   // Initialize all configured peripherals
   MX_DMA_Init();
