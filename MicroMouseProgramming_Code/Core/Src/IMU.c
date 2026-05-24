@@ -193,12 +193,6 @@ void initIMU(void) {
  * @brief Read all sensor values from the IMU
  */
 void refreshIMUValues(void) {
-    // Temporarily stop PWM to reduce I2C noise interference
-    HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
-    HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
-    HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);
-    HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_4);
-
     // Read accelerometer data (3 axes, 16-bit each)
     int16_t accel_x_raw = readWord(ICM42605_REG_ACCEL_DATA_X1);
     int16_t accel_y_raw = readWord(ICM42605_REG_ACCEL_DATA_Y1);
@@ -227,12 +221,6 @@ void refreshIMUValues(void) {
     // Read temperature data
     int16_t temp_raw = readWord(ICM42605_REG_TEMP_DATA1);
     IMU_Temp = ((float)temp_raw / 132.48f) + 25.0f;  // Convert to °C per datasheet
-    
-    // Restart PWM
-    HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
-    HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
-    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
     
     #ifdef IMU_DYNAMIC_FSR
     calibrateIMU();
