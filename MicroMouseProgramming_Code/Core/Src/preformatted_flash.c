@@ -73,6 +73,9 @@ uint8_t calculateOptimalSamplingRate(uint32_t log_start_addr, uint8_t expected_m
 {
     // Calculate maximum sampling rate based on available flash and expected duration
     #define MAX_SAMPLING_RATE 100  // Hz - maximum allowed
+#ifdef FLASH_END
+#undef FLASH_END
+#endif
     #define FLASH_END 0x08080000
     
     // Calculate available flash space for logging
@@ -128,8 +131,6 @@ float Bytes2float(uint8_t *ftoa_bytes_temp)
 
 uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint8_t *Data, uint32_t numBytes)
 {
-    uint32_t EndPageAddress = StartPageAddress + numBytes;
-    
     // Disable instruction cache for flash operations
     __HAL_FLASH_INSTRUCTION_CACHE_DISABLE();
     __HAL_FLASH_DATA_CACHE_DISABLE();
@@ -208,7 +209,7 @@ void initPreFormatedFlash(void) {
     memcpy(USB_storage_buffer[active_usb_buffer], (uint8_t*)page_start, FLASH_PAGE_SIZE);
 
     // Find and replace 123456789ABC with UID
-    uint8_t pattern[12] = "123456789ABC";
+    uint8_t pattern[12] = {'1','2','3','4','5','6','7','8','9','A','B','C'};
     for (uint32_t i = 0; i <= FLASH_PAGE_SIZE - 12; ++i) {
         if (memcmp(&USB_storage_buffer[active_usb_buffer][i], pattern, 12) == 0) {
             memcpy(&USB_storage_buffer[active_usb_buffer][i], UID, 12);

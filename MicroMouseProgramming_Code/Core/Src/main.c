@@ -156,6 +156,9 @@ uint8_t EXPECTED_MINUTES = 5;
 uint8_t STUDENT_NUMBER[9] = {'A','B','C','D','E','F','1','2','3'};  // 9 characters
 
 // Flash region detection structures (populated during initLogs)
+#ifdef FLASH_END
+#undef FLASH_END
+#endif
 #define FLASH_END 0x08080000
 #define FLASH_START 0x08000000
 #define PAGE_SIZE 2048
@@ -1486,7 +1489,7 @@ void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 1843200;
+  huart1.Init.BaudRate = 115200;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
