@@ -2,6 +2,10 @@ slprj/
 *.slxc
 debug.log
 *.slx.r2023a
+
+# Mac/Linux OS files
+.DS_Store
+._*
 !MicroMouseProgramming_Code/build/release/MicroMouseProgramming.bin
 !MicroMouseProgramming_Code/build/debug/MicroMouseProgramming.bin
 *instrumented/
