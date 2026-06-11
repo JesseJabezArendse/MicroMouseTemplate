@@ -63,7 +63,17 @@ Core/Src/syscalls.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc_ex.c
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc_ex.c \
+Core/Src/ADCs.c \
+Core/Src/Buttons.c \
+Core/Src/IMU.c \
+Core/Src/INA219.c \
+Core/Src/LEDs.c \
+Core/Src/Motors.c \
+Core/Src/SSD1306.c \
+Core/Src/VL53L0X.c \
+Core/Src/preformatted_flash.c \
+Core/Src/to_compile_flash.c
 
 # ASM sources
 ASM_SOURCES =  \
@@ -150,7 +160,7 @@ LDSCRIPT = STM32L476XX_FLASH.ld
 # libraries
 LIBS = -lc -lm -lnosys 
 LIBDIR = 
-LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
+LDFLAGS = $(MCU) -specs=nosys.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
 
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
