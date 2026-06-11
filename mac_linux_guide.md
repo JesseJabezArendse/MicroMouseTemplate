@@ -25,7 +25,8 @@ Because you are bypassing the Windows STM32 addon, your deployment process is sp
      1. Open the **Configuration Parameters** (press **Cmd + E** or click the gear icon).
      2. Under the **Hardware Implementation** pane, set **Hardware board** to **`None`**.
      3. Under the **Code Generation** pane, ensure the **System target file** is set to `ert.tlc` (Embedded Coder) or `grt.tlc` (Simulink Coder).
-     4. Click **Apply** and close the configuration.
+     4. On the same **Code Generation** pane, check the box for **`Generate code only`**.
+     5. Click **Apply** and close the configuration.
    * Press **Cmd + B** (or click the **Build** button). 
    * *Note: Do NOT click "Deploy to Hardware" as this will attempt to invoke the missing Windows addon and crash.* 
    * Simulink will generate the raw C-code and dump it into the build directory (typically `MicroMouseProgramming_Code` or the target model's `_ert_rtw` folder).
