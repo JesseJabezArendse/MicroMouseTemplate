@@ -1021,16 +1021,6 @@ void initScreen(){
 
 void refreshScreen() {
 	if (!SSD1306.Initialized) return;
-
-#ifdef COMPILED_BY_SIMULINK
-    // Throttle screen refresh to 10Hz (once every 10 calls at 100Hz) to save I2C bandwidth
-    static uint32_t refresh_counter = 0;
-    refresh_counter++;
-    if (refresh_counter < 10) {
-        return;
-    }
-    refresh_counter = 0;
-#endif
 #ifdef SCREEN_FONT_DYNAMIC
     uint16_t y_position = 0; // Start at the top of the screen
     uint16_t max_height = SSD1306_HEIGHT; // Maximum height of the screen

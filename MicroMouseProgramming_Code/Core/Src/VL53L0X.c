@@ -422,7 +422,12 @@ void initVL53L0(uint8_t newToFAddress, uint16_t signalRate){
 	if (!setSignalRateLimit(signalRate)) { restartI2C(); } // Updated to use uint16_t signalRate
   if (!setVcselPulsePeriod(VcselPeriodPreRange, PreRange)) { restartI2C(); }
   if (!setVcselPulsePeriod(VcselPeriodFinalRange, FinalRange)) { restartI2C(); }
-  if (!setMeasurementTimingBudget(50*(FinalRange-PreRange) * 1000UL)) { restartI2C(); }
+  // Set timing budget to 100ms (10Hz) to ensure reliable measurements under the long-range profile (PreRange=18, FinalRange=14), falling back to 200ms (5Hz) if needed.
+  if (!setMeasurementTimingBudget(100000)) {
+    if (!setMeasurementTimingBudget(200000)) {
+      restartI2C();
+    }
+  }
   startContinuous(0);
   setAddress_VL53L0X(newToFAddress);
 
