@@ -955,6 +955,14 @@ void stopContinuous(void)
 uint16_t readRangeContinuousMillimeters( VL53L0_t *extraStats) {
   uint8_t tempBuffer[12];
   uint16_t temp;
+  #ifdef COMPILED_BY_SIMULINK
+  if ((readReg(RESULT_INTERRUPT_STATUS) & 0x07) == 0) {
+    if (extraStats != NULL) {
+      extraStats->rangeStatus = 255; // Custom status indicating "not ready"
+    }
+    return 65535;
+  }
+  #else
   startTimeout();
   while ((readReg(RESULT_INTERRUPT_STATUS) & 0x07) == 0) {
     if (checkTimeoutExpired())
@@ -963,6 +971,7 @@ uint16_t readRangeContinuousMillimeters( VL53L0_t *extraStats) {
       return 65535;
     }
   }
+  #endif
   if (extraStats == NULL) {
     // assumptions: Linearity Corrective Gain is 1000 (default);
     // fractional ranging is not enabled
