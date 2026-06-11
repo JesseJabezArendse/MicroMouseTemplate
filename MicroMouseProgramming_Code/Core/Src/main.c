@@ -736,8 +736,6 @@ void refreshLoggedData() {
     readyToLog = false;
 }
 
-#ifndef COMPILED_BY_SIMULINK
-
 void initMicroMouse(){
   TIM3->CCR4 = 0;
   TIM3->CCR3 = 0;
@@ -764,6 +762,7 @@ void initMicroMouse(){
   initLogs();
 }
 
+#ifndef COMPILED_BY_SIMULINK
 bool simulink_talking = false;
 
 void updateMicroMouse(){
@@ -869,6 +868,80 @@ void main(void)
     // sendToSimulink();
     // HAL_Delay(100);
     // counter++;
+  }
+}
+#endif /* COMPILED_BY_SIMULINK */
+
+#ifdef COMPILED_BY_SIMULINK
+#ifdef RUN_STUDENT_TEMPLATE
+#include "StudentTemplate.h"
+#define MODEL_INITIALIZE StudentTemplate_initialize
+#define MODEL_STEP StudentTemplate_step
+#define MODEL_PARAMS StudentTemplate_P
+#else
+#include "MicroMouse_Deploy.h"
+#define MODEL_INITIALIZE MicroMouse_Deploy_initialize
+#define MODEL_STEP MicroMouse_Deploy_step
+#define MODEL_PARAMS MicroMouse_Deploy_P
+#endif
+
+void main(void)
+{
+  // Initialize the HAL Library; it must be the first function to be executed
+  HAL_Init();
+
+  // Configure the system clock
+  SystemClock_Config();
+
+  // Initialize all configured peripherals
+  MX_DMA_Init();
+  MX_GPIO_Init();
+  MX_ADC1_Init();
+  MX_I2C1_Init();
+  MX_I2C2_Init();
+  MX_TIM1_Init();
+  MX_TIM3_Init();
+  MX_TIM4_Init();
+  MX_TIM5_Init();
+  MX_TIM7_Init();
+  MX_USART1_UART_Init();
+  MX_NVIC_Init();
+
+  initMicroMouse();
+
+  // Configure timers for desired frequencies
+  configureTimer(100, TIM5); 
+  HAL_TIM_Base_Start_IT(&htim5);
+
+  HAL_UART_Receive_DMA(&huart1, (uint8_t *)&bigBuffer, sizeof(bigBuffer));
+
+  HAL_Delay(5000);
+
+  char temp_title[19];
+  strncpy(temp_title, oled_string1, 18);
+  temp_title[18] = '\0';
+
+  // Initialize Simulink model
+  MODEL_INITIALIZE();
+
+  // If the model initialization cleared the title string to empty, copy from model parameters or restore original
+  if (oled_string1[0] == '\0') {
+    if (MODEL_PARAMS.OLED_STRING1_String[0] != '\0') {
+      strncpy(oled_string1, MODEL_PARAMS.OLED_STRING1_String, 18);
+      oled_string1[18] = '\0';
+    } else if (temp_title[0] != '\0') {
+      strcpy(oled_string1, temp_title);
+    }
+  }
+
+  // Enable motors by default under Simulink build so they turn immediately
+  HAL_GPIO_WritePin(MOTOR_EN_GPIO_Port, MOTOR_EN_Pin, GPIO_PIN_SET);
+
+  while (1)
+  {
+    // Execute Simulink model step
+    MODEL_STEP();
+    HAL_Delay(10); // Run at 100Hz
   }
 }
 #endif /* COMPILED_BY_SIMULINK */

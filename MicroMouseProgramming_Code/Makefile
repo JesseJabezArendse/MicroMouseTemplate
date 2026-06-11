@@ -136,6 +136,9 @@ C_INCLUDES =  \
 -IDrivers/CMSIS/Device/ST/STM32L4xx/Include \
 -IDrivers/CMSIS/Include
 
+# Detect Simulink generated code and append to sources/includes/defs
+# (Auto-detection moved below)
+
 
 # compile gcc flags
 ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
@@ -161,6 +164,37 @@ LDSCRIPT = STM32L476XX_FLASH.ld
 LIBS = -lc -lm -lnosys 
 LIBDIR = 
 LDFLAGS = $(MCU) -specs=nosys.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
+
+# Detect Simulink generated code and append to sources/includes/defs/libs
+MATLAB_DIR = $(firstword $(wildcard /Applications/MATLAB_R*.app /usr/local/MATLAB/R*))
+
+ifneq ($(wildcard ../MicroMouse_Deploy_ert_rtw),)
+C_SOURCES += \
+../MicroMouse_Deploy_ert_rtw/MicroMouse_Deploy.c \
+../MicroMouse_Deploy_ert_rtw/MicroMouse_Deploy_data.c \
+../MicroMouse_Deploy_ert_rtw/rt_nonfinite.c
+C_INCLUDES += -I../MicroMouse_Deploy_ert_rtw -I.. -IDrivers/CMSIS/DSP/Include
+ifneq ($(MATLAB_DIR),)
+C_INCLUDES += -I$(MATLAB_DIR)/simulink/include
+endif
+C_DEFS += -DCOMPILED_BY_SIMULINK
+LIBS += -larm_cortexM4lf_math
+LIBDIR += -LDrivers/CMSIS/DSP/Lib/GCC
+endif
+
+ifneq ($(wildcard ../StudentTemplate_ert_rtw),)
+C_SOURCES += \
+../StudentTemplate_ert_rtw/StudentTemplate.c \
+../StudentTemplate_ert_rtw/StudentTemplate_data.c \
+../StudentTemplate_ert_rtw/rt_nonfinite.c
+C_INCLUDES += -I../StudentTemplate_ert_rtw -I.. -IDrivers/CMSIS/DSP/Include
+ifneq ($(MATLAB_DIR),)
+C_INCLUDES += -I$(MATLAB_DIR)/simulink/include
+endif
+C_DEFS += -DCOMPILED_BY_SIMULINK -DRUN_STUDENT_TEMPLATE
+LIBS += -larm_cortexM4lf_math
+LIBDIR += -LDrivers/CMSIS/DSP/Lib/GCC
+endif
 
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin

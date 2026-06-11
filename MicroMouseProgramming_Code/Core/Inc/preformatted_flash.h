@@ -89,4 +89,8 @@ uint32_t detectLogStartAddress(void);
 // Calculate optimal sampling rate based on available flash and expected duration
 uint8_t calculateOptimalSamplingRate(uint32_t log_start_addr, uint8_t expected_minutes, uint16_t log_struct_size);
 
+// Logger functions defined in main.c
+void initLogs(void);
+void refreshLoggedData(void);
+
 #endif /* PREFORMATTED_FLASH_H */

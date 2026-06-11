@@ -25,9 +25,7 @@
 extern I2C_HandleTypeDef hi2c2;
 #define SSD1306_I2C &hi2c2
 
-#ifndef COMPILED_BY_SIMULINK
 #define SCREEN_FONT_DYNAMIC
-#endif
 
 char oled_string1[19] = "UCT MICROMOUSE '25";
 char oled_string2[19] = "                  ";

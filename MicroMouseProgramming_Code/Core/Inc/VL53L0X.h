@@ -11,7 +11,7 @@
 ///////////////////////////////////////////////////////////
 
 #ifndef VL53L0X_REGISTER_MAP_H
-#define VL53L0X_VL53L0X_REGISTER_MAP_H
+#define VL53L0X_REGISTER_MAP_H
 
 // System control registers
 #define VL53L0X_SYSRANGE_START                          0x00 // 0x00: Single shot mode, 0x01: Continuous mode, 0x02: Back-to-back mode
