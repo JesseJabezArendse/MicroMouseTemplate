@@ -204,7 +204,7 @@ bool initVL53L0X(bool io_2v8, I2C_HandleTypeDef *handler){
   writeReg(MSRC_CONFIG_CONTROL, readReg(MSRC_CONFIG_CONTROL) | 0x12);
 
   // set final range signal rate limit to 0.25 MCPS (million counts per second)
-  setSignalRateLimit(0.2);
+  setSignalRateLimit(200);
 
   writeReg(SYSTEM_SEQUENCE_CONFIG, 0xFF);
 
@@ -411,6 +411,7 @@ bool setSignalRateLimit(uint16_t limit_kcps) {
 
 void initVL53L0(uint8_t newToFAddress, uint16_t signalRate){
   uint8_t status = 0;
+  g_i2cAddr = ADDRESS_DEFAULT;
   status = initVL53L0X(0, &hi2c2);
   if (status == false){ restartI2C();
   return;}
@@ -465,7 +466,13 @@ void getVL53L0(VL53L0_t* TOF_result){
   g_i2cAddr = TOF_result->Address;
 
   VL53L0_t distanceStr; // Updated type
+  distanceStr.rangeStatus = 255;
   uint16_t distance = readRangeContinuousMillimeters(&distanceStr);
+
+  // If a timeout occurred (no new sample ready yet), keep the last cached value
+  if (distance == 65535) {
+    return;
+  }
 
   // If the range is valid, update the TOF_result structure
   if (distanceStr.rangeStatus == RANGECOMPLETE || distanceStr.rangeStatus == NONE) {
@@ -474,7 +481,14 @@ void getVL53L0(VL53L0_t* TOF_result){
       TOF_result->Status = distanceStr.rangeStatus;
       TOF_result->Ambient = distanceStr.Ambient;
       TOF_result->Signal = distanceStr.Signal;
+    } else {
+      TOF_result->Distance = 8190;
+      TOF_result->Status = distanceStr.rangeStatus;
     }
+  } else {
+    // Ranging failed/timed out (e.g. out of range / open air)
+    TOF_result->Distance = 8190;
+    TOF_result->Status = distanceStr.rangeStatus;
   }
 
   

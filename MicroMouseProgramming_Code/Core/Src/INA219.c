@@ -404,8 +404,7 @@ uint8_t initINA219()
 
 	ina219_CurrentDivider_mA = 0;
 	ina219_PowerMultiplier_mW = 0;
-
-	uint8_t ina219_isReady = HAL_I2C_IsDeviceReady(ina219.ina219_i2c, (ina219.Address << 1), 100, HAL_MAX_DELAY);
+	uint8_t ina219_isReady = HAL_I2C_IsDeviceReady(ina219.ina219_i2c, (ina219.Address << 1), 3, 10);
 
 	if(ina219_isReady == HAL_OK)
 	{

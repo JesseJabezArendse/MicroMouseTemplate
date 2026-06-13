@@ -74,7 +74,9 @@ DMA_HandleTypeDef hdma_usart1_tx;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
+#ifndef COMPILING_FOR_MICROPYTHON
 void SystemClock_Config(void);
+#endif
  void MX_NVIC_Init(void);
  
 /* USER CODE BEGIN PFP */
@@ -820,6 +822,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 }
 
 
+#ifndef COMPILING_FOR_MICROPYTHON
 void main(void)
 {
   // Initialize the HAL Library; it must be the first function to be executed
@@ -870,6 +873,7 @@ void main(void)
     // counter++;
   }
 }
+#endif /* COMPILING_FOR_MICROPYTHON */
 #endif /* COMPILED_BY_SIMULINK */
 
 #ifdef COMPILED_BY_SIMULINK
@@ -885,6 +889,7 @@ void main(void)
 #define MODEL_PARAMS MicroMouse_Deploy_P
 #endif
 
+#ifndef COMPILING_FOR_MICROPYTHON
 void main(void)
 {
   // Initialize the HAL Library; it must be the first function to be executed
@@ -944,6 +949,7 @@ void main(void)
     HAL_Delay(10); // Run at 100Hz
   }
 }
+#endif /* COMPILING_FOR_MICROPYTHON */
 #endif /* COMPILED_BY_SIMULINK */
 /* USER CODE END 0 */
 
@@ -956,6 +962,7 @@ void main(void)
   * @brief System Clock Configuration
   * @retval None
   */
+#ifndef COMPILING_FOR_MICROPYTHON
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -1000,6 +1007,7 @@ void SystemClock_Config(void)
     Error_Handler();
   }
 }
+#endif
 
 /**
   * @brief NVIC Configuration.
@@ -1669,10 +1677,16 @@ void MX_GPIO_Init(void)
                            PA5 PA6 PA7 PA8
                            PA9 PA10 PA11 PA12
                            PA15 */
+#ifdef COMPILING_FOR_MICROPYTHON
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_4
+                          |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8
+                          |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_15;
+#else
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_4
                           |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8
                           |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12
                           |GPIO_PIN_15;
+#endif
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -1739,7 +1753,7 @@ void MX_GPIO_Init(void)
   * @param  htim : TIM handle
   * @retval None
   */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+void jesse_legacy_period_elapsed_callback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
 
@@ -1756,6 +1770,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   * @brief  This function is executed in case of error occurrence.
   * @retval None
   */
+#ifndef COMPILING_FOR_MICROPYTHON
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -1770,6 +1785,7 @@ void Error_Handler(void)
   
   /* USER CODE END Error_Handler_Debug */
 }
+#endif
 
 #ifdef  USE_FULL_ASSERT
 /**
