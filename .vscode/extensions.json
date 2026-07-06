@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "twxs.cmake",
+    "josetr.cmake-language-support-vscode",
+    "ms-vscode.cmake-tools",
+    "marus25.cortex-debug",
+    "bmd.stm32-for-vscode",
+    "STMicroelectronics.stm32cube-ide-build-cmake",
+    "STMicroelectronics.stm32cube-ide-core",
+    "cnshenj.vscode-task-manager"
+  ]
+}

@@ -508,9 +508,3 @@ g_pfnVectors:
 	
 	.weak	FPU_IRQHandler
 	.thumb_set FPU_IRQHandler,Default_Handler
-
-; .section .data_Prog_00,"a",%progbits
-; .type PROGRAM_00, %object
-; .size PROGRAM_00, .-PROGRAM_00
-; PROGRAM_00:
-; .incbin "Core/Src/FS_70KB.bin"

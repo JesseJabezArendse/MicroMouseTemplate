@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMouse Interface</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🐭 MicroMouse Interface</h1>
+            <div class="connection-status">
+                <span id="status-indicator" class="status-disconnected"></span>
+                <span id="status-text">Disconnected</span>
+            </div>
+        </header>
+
+        <!-- Connection Panel -->
+        <section class="panel connection-panel">
+            <h2>Connection</h2>
+            <div class="form-group">
+                <label>Serial Port:</label>
+                <select id="port-select">
+                    <option value="COM3">COM3</option>
+                </select>
+                <button id="scan-ports-btn" class="btn-secondary">Scan Ports</button>
+            </div>
+            <div class="form-group">
+                <label>Baud Rate:</label>
+                <select id="baud-select">
+                    <option value="9600">9600</option>
+                    <option value="19200">19200</option>
+                    <option value="38400">38400</option>
+                    <option value="57600">57600</option>
+                    <option value="115200">115200</option>
+                    <option selected value="1843200">1843200</option>
+                </select>
+            </div>
+            <button id="connect-btn" class="btn-primary">Connect</button>
+            <button id="disconnect-btn" class="btn-secondary" disabled>Disconnect</button>
+        </section>
+
+        <!-- Main content grid -->
+        <div class="grid-2">
+            <!-- Sensors Panel -->
+            <section class="panel">
+                <h2>📊 Sensors</h2>
+                
+                <div class="sensor-group">
+                    <h3>Time-of-Flight (mm)</h3>
+                    <div class="sensor-row">
+                        <div class="sensor-box">
+                            <span class="sensor-label">Front Left</span>
+                            <span id="tof-front-left" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Centre</span>
+                            <span id="tof-centre" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Front Right</span>
+                            <span id="tof-front-right" class="sensor-value">---</span>
+                        </div>
+                    </div>
+                    <div class="sensor-row">
+                        <div class="sensor-box">
+                            <span class="sensor-label">Left</span>
+                            <span id="tof-left" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Right</span>
+                            <span id="tof-right" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Back</span>
+                            <span id="tof-back" class="sensor-value">---</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sensor-group">
+                    <h3>IMU</h3>
+                    <div class="sensor-grid">
+                        <div class="sensor-box">
+                            <span class="sensor-label">Accel X</span>
+                            <span id="imu-ax" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Accel Y</span>
+                            <span id="imu-ay" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Accel Z</span>
+                            <span id="imu-az" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Gyro X</span>
+                            <span id="imu-gx" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Gyro Y</span>
+                            <span id="imu-gy" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Gyro Z</span>
+                            <span id="imu-gz" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Temp</span>
+                            <span id="imu-temp" class="sensor-value">---</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sensor-group">
+                    <h3>Battery</h3>
+                    <div class="sensor-grid">
+                        <div class="sensor-box">
+                            <span class="sensor-label">Voltage (V)</span>
+                            <span id="batt-voltage" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Current (A)</span>
+                            <span id="batt-current" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Health %</span>
+                            <span id="batt-pct" class="sensor-value">---</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sensor-group">
+                    <h3>ADC Values</h3>
+                    <div class="sensor-grid">
+                        <div class="sensor-box">
+                            <span class="sensor-label">ADC0</span>
+                            <span id="adc-0" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">ADC1</span>
+                            <span id="adc-1" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">ADC2</span>
+                            <span id="adc-2" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">ADC3</span>
+                            <span id="adc-3" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">ADC4</span>
+                            <span id="adc-4" class="sensor-value">---</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Actuators Panel -->
+            <section class="panel">
+                <h2>⚙️ Actuators</h2>
+
+                <div class="control-group">
+                    <h3>Motors</h3>
+                    <div class="motor-control">
+                        <div class="motor">
+                            <label>Left Motor</label>
+                            <input type="range" id="motor-left" min="-100" max="100" value="0">
+                            <span id="motor-left-val">0</span>
+                        </div>
+                        <div class="motor">
+                            <label>Right Motor</label>
+                            <input type="range" id="motor-right" min="-100" max="100" value="0">
+                            <span id="motor-right-val">0</span>
+                        </div>
+                    </div>
+                    <div class="sensor-grid" style="margin-top: 10px;">
+                        <div class="sensor-box">
+                            <span class="sensor-label">Left RPM</span>
+                            <span id="enc-rate-left" class="sensor-value">---</span>
+                        </div>
+                        <div class="sensor-box">
+                            <span class="sensor-label">Right RPM</span>
+                            <span id="enc-rate-right" class="sensor-value">---</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>LEDs</h3>
+                    <div class="led-controls">
+                        <label class="led-control">
+                            <input type="checkbox" id="led-0" class="led-checkbox">
+                            <span class="led-label">LED 0</span>
+                            <span class="led-indicator" id="led-0-indicator"></span>
+                        </label>
+                        <label class="led-control">
+                            <input type="checkbox" id="led-1" class="led-checkbox">
+                            <span class="led-label">LED 1</span>
+                            <span class="led-indicator" id="led-1-indicator"></span>
+                        </label>
+                        <label class="led-control">
+                            <input type="checkbox" id="led-2" class="led-checkbox">
+                            <span class="led-label">LED 2</span>
+                            <span class="led-indicator" id="led-2-indicator"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Buttons</h3>
+                    <div class="button-display">
+                        <span id="btn-0" class="button-state">Button 0: Released</span>
+                        <span id="btn-1" class="button-state">Button 1: Released</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Charts -->
+        <section class="panel full-width">
+            <h2>📈 Real-Time Data</h2>
+            <div id="tof-chart" style="height: 300px;"></div>
+            <div id="battery-chart" style="height: 300px; margin-top: 20px;"></div>
+            <div id="encoder-chart" style="height: 300px; margin-top: 20px;"></div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

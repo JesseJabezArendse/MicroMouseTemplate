@@ -10,8 +10,14 @@
 // Last Modified : 18-06-2025
 ///////////////////////////////////////////////////////////
 
-#ifndef VL53L0X_REGISTER_MAP_H
-#define VL53L0X_REGISTER_MAP_H
+#ifndef VL53L0X_h
+#define VL53L0X_h
+
+#include <stdbool.h>
+
+//------------------------------------------------------------
+// Register Map and Enums
+//------------------------------------------------------------
 
 // System control registers
 #define VL53L0X_SYSRANGE_START                          0x00 // 0x00: Single shot mode, 0x01: Continuous mode, 0x02: Back-to-back mode
@@ -121,27 +127,25 @@ enum VL53L0X_Error {
     ALGOOVERFLOW = 13,                 // Algorithm overflow
     RANGEIGNORETHRESHOLD = 14          // Range ignore threshold error
 };
+#define XSHUT1_Pin       GPIO_PIN_8
+#define XSHUT1_GPIO_Port GPIOE
+#define XSHUT2_Pin       GPIO_PIN_15
+#define XSHUT2_GPIO_Port GPIOE
+#define XSHUT3_Pin       GPIO_PIN_3
+#define XSHUT3_GPIO_Port GPIOE
+#define XSHUT4_Pin       GPIO_PIN_10
+#define XSHUT4_GPIO_Port GPIOE
+#define XSHUT5_Pin       GPIO_PIN_2
+#define XSHUT5_GPIO_Port GPIOE
+#define XSHUT6_Pin       GPIO_PIN_11
+#define XSHUT6_GPIO_Port GPIOC
+#define XSHUT7_Pin       GPIO_PIN_3
+#define XSHUT7_GPIO_Port GPIOD
+#define XSHUT8_Pin       GPIO_PIN_8
+#define XSHUT8_GPIO_Port GPIOA
+#define XSHUT9_Pin       GPIO_PIN_0
+#define XSHUT9_GPIO_Port GPIOE
 
-#endif // VL53L0X_REGISTER_MAP_H
-
-#ifndef VL53L0X_h
-#define VL53L0X_h
-
-#ifndef COMPILED_BY_SIMULINK
-#define TOF_DYNAMIC_FSR
-#endif
-
-
-//------------------------------------------------------------
-// For quick and dirty C++ compatibility
-//------------------------------------------------------------
-#include <stdbool.h>
-
-//------------------------------------------------------------
-// Defines
-//------------------------------------------------------------
-// I use a 8-bit number for the address, LSB must be 0 so that I can
-// OR over the last bit correctly based on reads and writes
 #define ADDRESS_DEFAULT 0b01010010
 
 // Record the current time to check an upcoming timeout against
@@ -253,15 +257,19 @@ typedef enum { VcselPeriodPreRange, VcselPeriodFinalRange }vcselPeriodType;
 
 // Additional info for one measurement
 typedef struct {
-  uint8_t Address;       /*!< I2C Address */
-  uint32_t Distance;     /*!< Distance in millimeters */
-  uint32_t Status;       /*!< OK: 0, NOK: !0 */
-  uint16_t Ambient;      /*!< Ambient Counting Rate [kcps/spad], fixpoint9.7 */
-  uint16_t Signal;       /*!< Signal Counting Rate [kcps/spad], fixpoint9.7 */
-  uint16_t rawDistance;  /*!< Uncorrected distance [mm] */
-  uint16_t spadCnt;      /*!< Effective SPAD return count, fixpoint8.8 */
-  uint8_t rangeStatus;   /*!< Ranging status (0-15) */
+  uint8_t Address;             /*!< I2C Address */
+  I2C_HandleTypeDef *I2Cx;    /*!< I2C peripheral handle */
+  GPIO_TypeDef *XSHUT_Port;   /*!< XSHUT GPIO port */
+  uint16_t XSHUT_Pin;         /*!< XSHUT GPIO pin */
+  uint32_t Distance;           /*!< Distance in millimeters */
+  uint32_t Status;             /*!< OK: 0, NOK: !0 */
+  uint16_t Ambient;            /*!< Ambient Counting Rate [kcps/spad], fixpoint9.7 */
+  uint16_t Signal;             /*!< Signal Counting Rate [kcps/spad], fixpoint9.7 */
+  uint16_t rawDistance;        /*!< Uncorrected distance [mm] */
+  uint16_t spadCnt;            /*!< Effective SPAD return count, fixpoint8.8 */
+  uint8_t rangeStatus;         /*!< Ranging status (0-15) */
   uint32_t timingBudget;
+  uint8_t initialized;          /*!< 1 if sensor has been successfully initialized */
 } VL53L0_t;
 
 //------------------------------------------------------------
@@ -369,5 +377,16 @@ typedef struct {
   uint16_t msrc_dss_tcc_mclks, pre_range_mclks, final_range_mclks;
   uint32_t msrc_dss_tcc_us,    pre_range_us,    final_range_us;
 }SequenceStepTimeouts;
+
+// VL53L0_t sensor instances (defined in VL53L0X.c)
+extern VL53L0_t TOF_sb_left_result;
+extern VL53L0_t TOF_sb_front_result;
+extern VL53L0_t TOF_sb_right_result;
+extern VL53L0_t TOF_sb_front_left_result;
+extern VL53L0_t TOF_sb_front_right_result;
+extern VL53L0_t TOF_mb_back_result;
+extern VL53L0_t TOF_mb_front_result;
+extern VL53L0_t TOF_mb_front_left_result;
+extern VL53L0_t TOF_mb_front_right_result;
 
 #endif

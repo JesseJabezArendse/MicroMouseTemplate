@@ -426,6 +426,23 @@ void SSD1306_Clear (void);
 void initScreen();
 void refreshScreen();
 
+//------------------------------------------------------------
+// SSD1306 Data Structure
+//------------------------------------------------------------
+typedef struct {
+  uint16_t CurrentX;
+  uint16_t CurrentY;
+  uint8_t Inverted;
+  uint8_t Initialized;
+  char oled_string1[18];
+  char oled_string2[18];
+  char oled_string3[18];
+  char oled_string4[18];
+  char oled_string5[18];
+} SSD1306_t;
+
+extern SSD1306_t SSD1306_Data;
+
 /* C++ detection */
 #ifdef __cplusplus
 }

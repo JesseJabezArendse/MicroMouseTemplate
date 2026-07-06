@@ -13,6 +13,7 @@
 // VL53L0X datasheet.
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "stm32l4xx_hal.h" // Change it for your requirements.
 #include "string.h"
 #include "VL53L0X.h"
@@ -25,12 +26,13 @@
 #define I2C_READ 1
 #define I2C_WRITE 0
 
+extern I2C_HandleTypeDef hi2c1;
 extern I2C_HandleTypeDef hi2c2;
 
-uint32_t TOF_Distance[3];
-uint16_t TOF_Ambient[3];
-uint16_t TOF_Signal[3];
-uint32_t TOF_Status[3];
+uint32_t TOF_Distance[9];
+uint16_t TOF_Ambient[9];
+uint16_t TOF_Signal[9];
+uint32_t TOF_Status[9];
 
 
 //---------------------------------------------------------
@@ -44,15 +46,27 @@ uint8_t g_stopVariable; // read by init and used when starting measurement; is S
 uint32_t g_measTimBudUs;
 
 
-uint16_t VL53L0_address_default = 0x52;
-uint8_t newToFAddress_L = 0x54;
-uint8_t newToFAddress_C = 0x56;
-uint8_t newToFAddress_R = 0x58;
-VL53L0_t TOF_left_result;
-VL53L0_t TOF_centre_result;
-VL53L0_t TOF_right_result;
+uint8_t VL53L0_address_default = 0x52;
+uint8_t newToFAddress_L  = 0x54;
+uint8_t newToFAddress_FL = 0x5A;
+uint8_t newToFAddress_C  = 0x60;
+uint8_t newToFAddress_FR = 0x66;
+uint8_t newToFAddress_R  = 0x6C;
+uint8_t newToFAddress_B   = 0x72;
+uint8_t newToFAddress_MB_F  = 0x78;
+uint8_t newToFAddress_MB_FL = 0x7E;
+uint8_t newToFAddress_MB_FR = 0x84;
+VL53L0_t TOF_sb_left_result;
+VL53L0_t TOF_sb_front_result;
+VL53L0_t TOF_sb_right_result;
+VL53L0_t TOF_sb_front_left_result;
+VL53L0_t TOF_sb_front_right_result;
+VL53L0_t TOF_mb_back_result;
+VL53L0_t TOF_mb_front_result;
+VL53L0_t TOF_mb_front_left_result;
+VL53L0_t TOF_mb_front_right_result;
 
-I2C_HandleTypeDef VL53L0X_I2C_Handler; // I2C handler
+I2C_HandleTypeDef *VL53L0X_I2C_Handler; // I2C handler
 uint8_t msgBuffer[4];
 HAL_StatusTypeDef i2cStat;
 
@@ -75,42 +89,37 @@ static uint32_t timeoutMicrosecondsToMclks(uint32_t timeout_period_us, uint8_t v
 void writeReg(uint8_t reg, uint8_t value) {
 
   msgBuffer[0] = value; // Assign the value to the buffer.
-  i2cStat = HAL_I2C_Mem_Write(&VL53L0X_I2C_Handler, g_i2cAddr | I2C_WRITE, reg, 1, msgBuffer, 1, I2C_TIMEOUT);
-  // if (i2cStat != HAL_OK) {
-  //   restartI2C();
-  // }
+  i2cStat = HAL_I2C_Mem_Write(VL53L0X_I2C_Handler, g_i2cAddr | I2C_WRITE, reg, 1, msgBuffer, 1, I2C_TIMEOUT);
+  if (i2cStat != HAL_OK) {
+    restartI2C(VL53L0X_I2C_Handler);
+  }
 }
 
 // Write a 16-bit register
 void writeReg16Bit(uint8_t reg, uint16_t value){
 
   memcpy(msgBuffer, &value, 2); // Assign the value to the buffer.
-  i2cStat = HAL_I2C_Mem_Write(&VL53L0X_I2C_Handler, g_i2cAddr | I2C_WRITE, reg, 1, msgBuffer, 2, I2C_TIMEOUT);
-  // if (i2cStat != HAL_OK) {
-  //   restartI2C();
-  // }
+  i2cStat = HAL_I2C_Mem_Write(VL53L0X_I2C_Handler, g_i2cAddr | I2C_WRITE, reg, 1, msgBuffer, 2, I2C_TIMEOUT);
+  if (i2cStat != HAL_OK) {
+    restartI2C(VL53L0X_I2C_Handler);
+  }
 }
 
 // Write a 32-bit register
 void writeReg32Bit(uint8_t reg, uint32_t value){
 
   memcpy(msgBuffer, &value, 4); // Assign the value to the buffer.
-  i2cStat = HAL_I2C_Mem_Write(&VL53L0X_I2C_Handler, g_i2cAddr | I2C_WRITE, reg, 1, msgBuffer, 4, I2C_TIMEOUT);
-  // if (i2cStat != HAL_OK) {
-  //   restartI2C();
-  // }
+  i2cStat = HAL_I2C_Mem_Write(VL53L0X_I2C_Handler, g_i2cAddr | I2C_WRITE, reg, 1, msgBuffer, 4, I2C_TIMEOUT);
+  if (i2cStat != HAL_OK) {
+    restartI2C(VL53L0X_I2C_Handler);
+  }
 }
 
 // Read an 8-bit register
 uint8_t readReg(uint8_t reg) {
   uint8_t value;
 
-  i2cStat = HAL_I2C_Mem_Read(&VL53L0X_I2C_Handler, g_i2cAddr | I2C_READ, reg, 1, msgBuffer, 1, I2C_TIMEOUT);
-  
-    // Check for I2C errors after all operations
-    if (hi2c2.ErrorCode != HAL_I2C_ERROR_NONE) {
-        restartI2C();
-    }
+  i2cStat = HAL_I2C_Mem_Read(VL53L0X_I2C_Handler, g_i2cAddr | I2C_READ, reg, 1, msgBuffer, 1, I2C_TIMEOUT);
   
   value = msgBuffer[0];
 
@@ -121,7 +130,7 @@ uint8_t readReg(uint8_t reg) {
 uint16_t readReg16Bit(uint8_t reg) {
   uint16_t value;
 
-  i2cStat = HAL_I2C_Mem_Read(&VL53L0X_I2C_Handler, g_i2cAddr | I2C_READ, reg, 1, msgBuffer, 2, I2C_TIMEOUT);
+  i2cStat = HAL_I2C_Mem_Read(VL53L0X_I2C_Handler, g_i2cAddr | I2C_READ, reg, 1, msgBuffer, 2, I2C_TIMEOUT);
   memcpy(&value, msgBuffer, 2);
 
   return value;
@@ -130,7 +139,7 @@ uint16_t readReg16Bit(uint8_t reg) {
 // Read a 32-bit register
 uint32_t readReg32Bit(uint8_t reg) {
   uint32_t value;
-  i2cStat = HAL_I2C_Mem_Read(&VL53L0X_I2C_Handler, g_i2cAddr | I2C_READ, reg, 1, msgBuffer, 4, I2C_TIMEOUT);
+  i2cStat = HAL_I2C_Mem_Read(VL53L0X_I2C_Handler, g_i2cAddr | I2C_READ, reg, 1, msgBuffer, 4, I2C_TIMEOUT);
   memcpy(&value, msgBuffer, 4);
 
   return value;
@@ -141,14 +150,14 @@ uint32_t readReg32Bit(uint8_t reg) {
 void writeMulti(uint8_t reg, uint8_t const *src, uint8_t count){
 
   memcpy(msgBuffer, src, 4);
-  i2cStat = HAL_I2C_Mem_Write(&VL53L0X_I2C_Handler, g_i2cAddr | I2C_WRITE, reg, 1, msgBuffer, count, I2C_TIMEOUT);
+  i2cStat = HAL_I2C_Mem_Write(VL53L0X_I2C_Handler, g_i2cAddr | I2C_WRITE, reg, 1, msgBuffer, count, I2C_TIMEOUT);
 }
 
 // Read an arbitrary number of bytes from the sensor, starting at the given
 // register, into the given array
 void readMulti(uint8_t reg, uint8_t * dst, uint8_t count) {
 
-	i2cStat = HAL_I2C_Mem_Read(&VL53L0X_I2C_Handler, g_i2cAddr | I2C_READ, reg, 1, dst, count, I2C_TIMEOUT);
+	i2cStat = HAL_I2C_Mem_Read(VL53L0X_I2C_Handler, g_i2cAddr | I2C_READ, reg, 1, dst, count, I2C_TIMEOUT);
 }
 
 
@@ -174,7 +183,7 @@ bool initVL53L0X(bool io_2v8, I2C_HandleTypeDef *handler){
   // VL53L0X_DataInit() begin
 
   // Handler
-  memcpy(&VL53L0X_I2C_Handler, handler, sizeof(*handler));
+  VL53L0X_I2C_Handler = handler;
 
   // Reset the message buffer.
   msgBuffer[0] = 0;
@@ -190,7 +199,7 @@ bool initVL53L0X(bool io_2v8, I2C_HandleTypeDef *handler){
   }
 
   // "Set I2C standard mode"
-  writeReg(VL53L0X_I2C_MODE, VL53L0X_I2C_STANDARD_MODE);
+  writeReg(VL53L0X_I2C_MODE, VL53L0X_I2C_FAST_MODE);
 
   writeReg(0x80, 0x01);
   writeReg(0xFF, 0x01);
@@ -409,28 +418,37 @@ bool setSignalRateLimit(uint16_t limit_kcps) {
     return true;
 }
 
-void initVL53L0(uint8_t newToFAddress, uint16_t signalRate){
-  uint8_t status = 0;
+void initVL53L0(VL53L0_t *tof, uint16_t signalRate){
+  HAL_GPIO_WritePin(tof->XSHUT_Port, tof->XSHUT_Pin, GPIO_PIN_SET);
+  HAL_Delay(50);
+
+  // Set the global I2C handler for this sensor
+  VL53L0X_I2C_Handler = tof->I2Cx;
   g_i2cAddr = ADDRESS_DEFAULT;
-  status = initVL53L0X(0, &hi2c2);
-  if (status == false){ restartI2C();
-  return;}
+
+  uint8_t status = 0;
+  status = initVL53L0X(1, tof->I2Cx);
+  if (status == false){ 
+    restartI2C(tof->I2Cx);
+    return;
+  }
 
   uint8_t PreRange = 18;
   uint8_t FinalRange = 14;
 
 	// Configure the sensor for high accuracy and speed in 20 cm.
-	if (!setSignalRateLimit(signalRate)) { restartI2C(); } // Updated to use uint16_t signalRate
-  if (!setVcselPulsePeriod(VcselPeriodPreRange, PreRange)) { restartI2C(); }
-  if (!setVcselPulsePeriod(VcselPeriodFinalRange, FinalRange)) { restartI2C(); }
+	if (!setSignalRateLimit(signalRate)) { restartI2C(tof->I2Cx); } // Updated to use uint16_t signalRate
+  if (!setVcselPulsePeriod(VcselPeriodPreRange, PreRange)) { restartI2C(tof->I2Cx); }
+  if (!setVcselPulsePeriod(VcselPeriodFinalRange, FinalRange)) { restartI2C(tof->I2Cx); }
   // Set timing budget to 100ms (10Hz) to ensure reliable measurements under the long-range profile (PreRange=18, FinalRange=14), falling back to 200ms (5Hz) if needed.
   if (!setMeasurementTimingBudget(100000)) {
     if (!setMeasurementTimingBudget(200000)) {
-      restartI2C();
+      restartI2C(tof->I2Cx);
     }
   }
   startContinuous(0);
-  setAddress_VL53L0X(newToFAddress);
+  setAddress_VL53L0X(tof->Address);
+  tof->initialized = 1;
 
 }
 
@@ -455,14 +473,16 @@ void calibrateToF(VL53L0_t* TOF_result , uint16_t distance) {
       TOF_result->timingBudget = timingBudget;
       stopContinuous();
       setMeasurementTimingBudget(timingBudget);
-      if (!setVcselPulsePeriod(VcselPeriodPreRange, PreRange)) { restartI2C(); }
-      if (!setVcselPulsePeriod(VcselPeriodFinalRange, FinalRange)) { restartI2C(); }
+      if (!setVcselPulsePeriod(VcselPeriodPreRange, PreRange)) { restartI2C(TOF_result->I2Cx); }
+      if (!setVcselPulsePeriod(VcselPeriodFinalRange, FinalRange)) { restartI2C(TOF_result->I2Cx); }
       startContinuous(0);
     }
 }
 
 
 void getVL53L0(VL53L0_t* TOF_result){
+  if (!TOF_result->initialized) { return; }
+  VL53L0X_I2C_Handler = TOF_result->I2Cx;
   g_i2cAddr = TOF_result->Address;
 
   VL53L0_t distanceStr; // Updated type
@@ -498,53 +518,135 @@ void getVL53L0(VL53L0_t* TOF_result){
 }
 
 void refreshTOFValues() {
-    getVL53L0(&TOF_left_result);
+    getVL53L0(&TOF_sb_left_result);
+    getVL53L0(&TOF_sb_front_left_result);
+    getVL53L0(&TOF_sb_front_result);
+    getVL53L0(&TOF_sb_front_right_result);
+    getVL53L0(&TOF_sb_right_result);
+    getVL53L0(&TOF_mb_back_result);
+    getVL53L0(&TOF_mb_front_result);
+    getVL53L0(&TOF_mb_front_left_result);
+    getVL53L0(&TOF_mb_front_right_result);
 
-    getVL53L0(&TOF_centre_result);
+    TOF_Distance[0] = TOF_sb_left_result.Distance;
+    TOF_Distance[1] = TOF_sb_front_left_result.Distance;
+    TOF_Distance[2] = TOF_sb_front_result.Distance;
+    TOF_Distance[3] = TOF_sb_front_right_result.Distance;
+    TOF_Distance[4] = TOF_sb_right_result.Distance;
+    TOF_Distance[5] = TOF_mb_back_result.Distance;
+    TOF_Distance[6] = TOF_mb_front_result.Distance;
+    TOF_Distance[7] = TOF_mb_front_left_result.Distance;
+    TOF_Distance[8] = TOF_mb_front_right_result.Distance;
 
-    getVL53L0(&TOF_right_result);
+    TOF_Ambient[0] = TOF_sb_left_result.Ambient;
+    TOF_Ambient[1] = TOF_sb_front_left_result.Ambient;
+    TOF_Ambient[2] = TOF_sb_front_result.Ambient;
+    TOF_Ambient[3] = TOF_sb_front_right_result.Ambient;
+    TOF_Ambient[4] = TOF_sb_right_result.Ambient;
+    TOF_Ambient[5] = TOF_mb_back_result.Ambient;
+    TOF_Ambient[6] = TOF_mb_front_result.Ambient;
+    TOF_Ambient[7] = TOF_mb_front_left_result.Ambient;
+    TOF_Ambient[8] = TOF_mb_front_right_result.Ambient;
 
-    TOF_Distance[0] = TOF_left_result.Distance;
-    TOF_Distance[1] = TOF_centre_result.Distance;
-    TOF_Distance[2] = TOF_right_result.Distance;
+    TOF_Signal[0] = TOF_sb_left_result.Signal;
+    TOF_Signal[1] = TOF_sb_front_left_result.Signal;
+    TOF_Signal[2] = TOF_sb_front_result.Signal;
+    TOF_Signal[3] = TOF_sb_front_right_result.Signal;
+    TOF_Signal[4] = TOF_sb_right_result.Signal;
+    TOF_Signal[5] = TOF_mb_back_result.Signal;
+    TOF_Signal[6] = TOF_mb_front_result.Signal;
+    TOF_Signal[7] = TOF_mb_front_left_result.Signal;
+    TOF_Signal[8] = TOF_mb_front_right_result.Signal;
 
-    TOF_Ambient[0] = TOF_left_result.Ambient;
-    TOF_Ambient[1] = TOF_centre_result.Ambient;
-    TOF_Ambient[2] = TOF_right_result.Ambient;
-
-    TOF_Signal[0] = TOF_left_result.Signal;
-    TOF_Signal[1] = TOF_centre_result.Signal;
-    TOF_Signal[2] = TOF_right_result.Signal;
-
-    TOF_Status[0] = TOF_left_result.Status;
-    TOF_Status[1] = TOF_centre_result.Status;
-    TOF_Status[2] = TOF_right_result.Status;
+    TOF_Status[0] = TOF_sb_left_result.Status;
+    TOF_Status[1] = TOF_sb_front_left_result.Status;
+    TOF_Status[2] = TOF_sb_front_result.Status;
+    TOF_Status[3] = TOF_sb_front_right_result.Status;
+    TOF_Status[4] = TOF_sb_right_result.Status;
+    TOF_Status[5] = TOF_mb_back_result.Status;
+    TOF_Status[6] = TOF_mb_front_result.Status;
+    TOF_Status[7] = TOF_mb_front_left_result.Status;
+    TOF_Status[8] = TOF_mb_front_right_result.Status;
 }
 
 void initTOFs(uint16_t signalRate){
-  TOF_left_result.Address = newToFAddress_L;
-  TOF_centre_result.Address = newToFAddress_C;
-  TOF_right_result.Address = newToFAddress_R;
+  TOF_sb_left_result.Address = newToFAddress_L;         TOF_sb_left_result.I2Cx = &hi2c2;        TOF_sb_left_result.XSHUT_Port = XSHUT1_GPIO_Port; TOF_sb_left_result.XSHUT_Pin = XSHUT1_Pin;
+  TOF_sb_front_left_result.Address = newToFAddress_FL;  TOF_sb_front_left_result.I2Cx = &hi2c2;  TOF_sb_front_left_result.XSHUT_Port = XSHUT4_GPIO_Port; TOF_sb_front_left_result.XSHUT_Pin = XSHUT4_Pin;
+  TOF_sb_front_result.Address = newToFAddress_C;       TOF_sb_front_result.I2Cx = &hi2c2;       TOF_sb_front_result.XSHUT_Port = XSHUT2_GPIO_Port; TOF_sb_front_result.XSHUT_Pin = XSHUT2_Pin;
+  TOF_sb_front_right_result.Address = newToFAddress_FR; TOF_sb_front_right_result.I2Cx = &hi2c2;  TOF_sb_front_right_result.XSHUT_Port = XSHUT5_GPIO_Port; TOF_sb_front_right_result.XSHUT_Pin = XSHUT5_Pin;
+  TOF_sb_right_result.Address = newToFAddress_R;        TOF_sb_right_result.I2Cx = &hi2c2;        TOF_sb_right_result.XSHUT_Port = XSHUT3_GPIO_Port; TOF_sb_right_result.XSHUT_Pin = XSHUT3_Pin;
+  TOF_mb_back_result.Address = newToFAddress_B;         TOF_mb_back_result.I2Cx = &hi2c1;         TOF_mb_back_result.XSHUT_Port = XSHUT6_GPIO_Port; TOF_mb_back_result.XSHUT_Pin = XSHUT6_Pin;
+  TOF_mb_front_result.Address = newToFAddress_MB_F;      TOF_mb_front_result.I2Cx = &hi2c2;         TOF_mb_front_result.XSHUT_Port = XSHUT7_GPIO_Port; TOF_mb_front_result.XSHUT_Pin = XSHUT7_Pin;
+  TOF_mb_front_left_result.Address = newToFAddress_MB_FL; TOF_mb_front_left_result.I2Cx = &hi2c2;   TOF_mb_front_left_result.XSHUT_Port = XSHUT8_GPIO_Port; TOF_mb_front_left_result.XSHUT_Pin = XSHUT8_Pin;
+  TOF_mb_front_right_result.Address = newToFAddress_MB_FR; TOF_mb_front_right_result.I2Cx = &hi2c2; TOF_mb_front_right_result.XSHUT_Port = XSHUT9_GPIO_Port; TOF_mb_front_right_result.XSHUT_Pin = XSHUT9_Pin;
+
+  // Configure XSHUT GPIO pins before reset
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+
+  // Configure XSHUT1 on GPIOE
+  GPIO_InitStruct.Pin = XSHUT1_Pin;
+  HAL_GPIO_Init(XSHUT1_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT2 on GPIOE
+  GPIO_InitStruct.Pin = XSHUT2_Pin;
+  HAL_GPIO_Init(XSHUT2_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT3 on GPIOE
+  GPIO_InitStruct.Pin = XSHUT3_Pin;
+  HAL_GPIO_Init(XSHUT3_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT4 on GPIOE
+  GPIO_InitStruct.Pin = XSHUT4_Pin;
+  HAL_GPIO_Init(XSHUT4_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT5 on GPIOE
+  GPIO_InitStruct.Pin = XSHUT5_Pin;
+  HAL_GPIO_Init(XSHUT5_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT6 on GPIOC
+  GPIO_InitStruct.Pin = XSHUT6_Pin;
+  HAL_GPIO_Init(XSHUT6_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT7 on GPIOD
+  GPIO_InitStruct.Pin = XSHUT7_Pin;
+  HAL_GPIO_Init(XSHUT7_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT8 on GPIOA
+  GPIO_InitStruct.Pin = XSHUT8_Pin;
+  HAL_GPIO_Init(XSHUT8_GPIO_Port, &GPIO_InitStruct);
+
+  // Configure XSHUT9 on GPIOE
+  GPIO_InitStruct.Pin = XSHUT9_Pin;
+  HAL_GPIO_Init(XSHUT9_GPIO_Port, &GPIO_InitStruct);
 
   setTimeout(200);
 
+  // Reset all sensors
   HAL_GPIO_WritePin(XSHUT1_GPIO_Port, XSHUT1_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(XSHUT2_GPIO_Port, XSHUT2_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(XSHUT3_GPIO_Port, XSHUT3_Pin, GPIO_PIN_RESET);
-  HAL_Delay(50);
+  HAL_GPIO_WritePin(XSHUT4_GPIO_Port, XSHUT4_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(XSHUT5_GPIO_Port, XSHUT5_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(XSHUT6_GPIO_Port, XSHUT6_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(XSHUT7_GPIO_Port, XSHUT7_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(XSHUT8_GPIO_Port, XSHUT8_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(XSHUT9_GPIO_Port, XSHUT9_Pin, GPIO_PIN_RESET);
+  HAL_Delay(200);
 
-  // enable power to the ToF sensors and set the new addresses and stuff
-  HAL_GPIO_WritePin(XSHUT1_GPIO_Port, XSHUT1_Pin, GPIO_PIN_SET);
-  HAL_Delay(50);
-  initVL53L0(newToFAddress_L,signalRate);
-
-  HAL_GPIO_WritePin(XSHUT2_GPIO_Port, XSHUT2_Pin, GPIO_PIN_SET);
-  HAL_Delay(50);
-  initVL53L0(newToFAddress_C,signalRate);
-
-  HAL_GPIO_WritePin(XSHUT3_GPIO_Port, XSHUT3_Pin, GPIO_PIN_SET);
-  HAL_Delay(50);
-  initVL53L0(newToFAddress_R,signalRate);
+  // Enable each sensor one at a time and initialise it
+  initVL53L0(&TOF_sb_left_result, signalRate);
+  initVL53L0(&TOF_sb_front_left_result, signalRate);
+  initVL53L0(&TOF_sb_front_result, signalRate);
+  initVL53L0(&TOF_sb_front_right_result, signalRate);
+  initVL53L0(&TOF_sb_right_result, signalRate);
+  initVL53L0(&TOF_mb_back_result, signalRate);
+  initVL53L0(&TOF_mb_front_result, signalRate);
+  initVL53L0(&TOF_mb_front_left_result, signalRate);
+  initVL53L0(&TOF_mb_front_right_result, signalRate);
 
   setTimeout(5);
 }

@@ -1,75 +1,54 @@
 {
+    "version": "0.2.0",
     "configurations": [
         {
-            "showDevDebugOutput": "parsed",
-            "cwd": "${workspaceRoot}",
-            "executable": "./build/debug/MicroMouseProgramming.elf",
-            "name": "Debug STM32",
+            "name": "Debug MicroMouse (CMake)",
+            "type": "cortex-debug",
             "request": "launch",
-            "type": "cortex-debug",
             "servertype": "openocd",
-            "preLaunchTask": "Build STM",
-            "device": "stm32l476",
-            "configFiles": [
-                "openocd.cfg"
-            ],
-            "liveWatch": {
-                "enabled": true,
-                "samplesPerSecond": 20
-            }
-        },
-        {
-            "showDevDebugOutput": "parsed",
-            "cwd": "${workspaceRoot}",
-            "executable": "./build/debug/MicroMouseProgramming.elf",
-            "name": "Attach STM32",
-            "request": "attach",
-            "type": "cortex-debug",
-            "servertype": "openocd",
-            "preLaunchTask": "Build STM",
-            "device": "stm32l476",
-            "configFiles": [
-                "openocd.cfg"
-            ]
-        },
-        {
-            "showDevDebugOutput": "both",
-            "cwd": "${workspaceRoot}",
-            "executable": "./build/debug/MicroMouseProgramming.elf",
-            "name": "Debug STM32 (J-Link SWD)",
-            "request": "launch",
-            "type": "cortex-debug",
-            "servertype": "jlink",
-            "serverpath": "C:/Program Files/SEGGER/JLink_V868/JLinkGDBServerCL.exe",
-            "preLaunchTask": "Build STM",
-            "device": "STM32L476VE",
-            "interface": "swd",
+            "configFiles": ["openocd.cfg"],
+            "cwd": "${workspaceFolder}",
+            "executable": "${command:cmake.launchTargetPath}",
+            "device": "STM32L476",
             "runToEntryPoint": "main",
-            "svdFile": "${workspaceRoot}/STM32L476.svd",
-            "serverArgs": ["-speed", "12000"],
             "liveWatch": {
                 "enabled": true,
-                "samplesPerSecond": 20
-            }
+                "samplesPerSecond": 10
+            },
+            "postRestartCommands": [
+                "break main",
+                "continue"
+            ],
+            "gdbPath": "${config:cortex-debug.armToolchainPath}/arm-none-eabi-gdb.exe",
+            "objdumpPath": "${config:cortex-debug.armToolchainPath}/arm-none-eabi-objdump.exe",
+            "toolchainPrefix": "${config:cortex-debug.armToolchainPath}/arm-none-eabi",
+            "showDevDebugOutput": "parsed"
+        },
+
+        {
+            "name": "Attach MicroMouse (CMake)",
+            "type": "cortex-debug",
+            "request": "attach",
+            "servertype": "openocd",
+            "configFiles": ["openocd.cfg"],
+            "cwd": "${workspaceFolder}",
+            "executable": "${command:cmake.launchTargetPath}",
+            "device": "STM32L476",
+            "gdbPath": "${config:cortex-debug.armToolchainPath}/arm-none-eabi-gdb.exe",
+            "objdumpPath": "${config:cortex-debug.armToolchainPath}/arm-none-eabi-objdump.exe",
+            "toolchainPrefix": "${config:cortex-debug.armToolchainPath}/arm-none-eabi",
+            "showDevDebugOutput": "parsed"
         },
         {
-            "showDevDebugOutput": "both",
+            "name": "Debug MicroMouse Web Interface",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/Scripts/micromouse_interface.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
             "cwd": "${workspaceRoot}",
-            "executable": "./build/debug/MicroMouseProgramming.elf",
-            "name": "Attach STM32 (J-Link SWD)",
-            "request": "attach",
-            "type": "cortex-debug",
-            "servertype": "jlink",
-            "device": "STM32L476VE",
-            "interface": "swd",
-            "serverArgs": [
-                "-strict", 
-                "-timeout", "10000",
-                "-speed", "1000",
-                "-vd"
-            ],
-            "rtos": "auto",
-            "svdFile": "${workspaceRoot}/STM32L476.svd"
+            "env": {"FLASK_ENV": "development"},
+            "preLaunchTask": "Install Python Dependencies"
         }
     ]
 }

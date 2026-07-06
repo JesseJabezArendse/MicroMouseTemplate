@@ -1,0 +1,28 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "MicroMouse Simulink"
+    },
+    {
+      "path": "MicroMouseProgramming_Code",
+      "name": "MicroMouse C Programming"
+    }
+  ],
+  "settings": {
+    "cortex-debug.armToolchainPath": "c:\\Users\\JesseJabezArendse\\AppData\\Roaming\\Code\\User\\globalStorage\\bmd.stm32-for-vscode\\@xpack-dev-tools\\arm-none-eabi-gcc\\12.3.1-1.2.1\\.content\\bin",
+    "cortex-debug.openocdPath": "c:\\Users\\JesseJabezArendse\\AppData\\Roaming\\Code\\User\\globalStorage\\bmd.stm32-for-vscode\\@xpack-dev-tools\\openocd\\0.12.0-2.1\\.content\\bin\\openocd.EXE"
+  },
+  "extensions": {
+    "recommendations": [
+      "twxs.cmake",
+      "josetr.cmake-language-support-vscode",
+      "ms-vscode.cmake-tools",
+      "marus25.cortex-debug",
+      "bmd.stm32-for-vscode",
+      "STMicroelectronics.stm32cube-ide-build-cmake",
+      "STMicroelectronics.stm32cube-ide-core",
+      "cnshenj.vscode-task-manager"
+    ]
+  }
+}

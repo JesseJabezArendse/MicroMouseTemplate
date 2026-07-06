@@ -25,13 +25,22 @@
 extern I2C_HandleTypeDef hi2c2;
 #define SSD1306_I2C &hi2c2
 
+#ifndef COMPILED_BY_SIMULINK
 #define SCREEN_FONT_DYNAMIC
+#endif
 
-char oled_string1[19] = "UCT MICROMOUSE '25";
-char oled_string2[19] = "                  ";
-char oled_string3[19] = "                  ";
-char oled_string4[19] = "                  ";
-char oled_string5[19] = "                  ";
+// SSD1306 Data Structure Instance
+SSD1306_t SSD1306_Data = {
+  .CurrentX = 0,
+  .CurrentY = 0,
+  .Inverted = 0,
+  .Initialized = 0,
+  .oled_string1 = "UCT MICROMOUSE '26",
+  .oled_string2 = "                  ",
+  .oled_string3 = "                  ",
+  .oled_string4 = "                  ",
+  .oled_string5 = "                  "
+};
 
 /* Write command */
 #define SSD1306_WRITECOMMAND(command)      SSD1306_I2C_Write(SSD1306_I2C_ADDR, 0x00, (command))
@@ -390,16 +399,8 @@ char* FONTS_GetStringSize(char* str, FONTS_SIZE_t* SizeStruct, FontDef_t* Font) 
 /* SSD1306 data buffer */
 static uint8_t SSD1306_Buffer[SSD1306_WIDTH * SSD1306_HEIGHT / 8];
 
-/* Private SSD1306 structure */
-typedef struct {
-	uint16_t CurrentX;
-	uint16_t CurrentY;
-	uint8_t Inverted;
-	uint8_t Initialized;
-} SSD1306_t;
-
-/* Private variable */
-static SSD1306_t SSD1306;
+/* SSD1306_Data is now defined in the header and initialized in SSD1306.c */
+/* It was previously a static struct here, now it's extern from the header */
 
 
 uint8_t SSD1306_Init(void) {
@@ -410,7 +411,7 @@ uint8_t SSD1306_Init(void) {
 	/* Check if LCD connected to I2C */
 	if (HAL_I2C_IsDeviceReady(SSD1306_I2C, SSD1306_I2C_ADDR, 1, I2C_TIMEOUT) != HAL_OK) {
 		/* Return false */
-		SSD1306.Initialized = false;
+		SSD1306_Data.Initialized = false;
 		return 0;
 	}
 	
@@ -479,14 +480,14 @@ uint8_t SSD1306_Init(void) {
 	SSD1306_UpdateScreen();
 	
 	/* Set default values */
-	SSD1306.CurrentX = 0;
-	SSD1306.CurrentY = 0;
+	SSD1306_Data.CurrentX = 0;
+	SSD1306_Data.CurrentY = 0;
 	
 	/* Initialized OK */
-	SSD1306.Initialized = 1;
+	SSD1306_Data.Initialized = 1;
 	
 	/* Return OK */
-	SSD1306.Initialized = true;
+	SSD1306_Data.Initialized = true;
 	return 1;
 }
 
@@ -507,7 +508,7 @@ void SSD1306_ToggleInvert(void) {
 	uint16_t i;
 	
 	/* Toggle invert */
-	SSD1306.Inverted = !SSD1306.Inverted;
+	SSD1306_Data.Inverted = !SSD1306_Data.Inverted;
 	
 	/* Do memory toggle */
 	for (i = 0; i < sizeof(SSD1306_Buffer); i++) {
@@ -530,7 +531,7 @@ void SSD1306_DrawPixel(uint16_t x, uint16_t y, SSD1306_COLOR_t color) {
 	}
 	
 	/* Check if pixels are inverted */
-	if (SSD1306.Inverted) {
+	if (SSD1306_Data.Inverted) {
 		color = (SSD1306_COLOR_t)!color;
 	}
 	
@@ -544,8 +545,8 @@ void SSD1306_DrawPixel(uint16_t x, uint16_t y, SSD1306_COLOR_t color) {
 
 void SSD1306_GotoXY(uint16_t x, uint16_t y) {
 	/* Set write pointers */
-	SSD1306.CurrentX = x;
-	SSD1306.CurrentY = y;
+	SSD1306_Data.CurrentX = x;
+	SSD1306_Data.CurrentY = y;
 }
 
 char SSD1306_Putc(char ch, FontDef_t* Font, SSD1306_COLOR_t color) {
@@ -553,8 +554,8 @@ char SSD1306_Putc(char ch, FontDef_t* Font, SSD1306_COLOR_t color) {
 	
 	/* Check available space in LCD */
 	if (
-		SSD1306_WIDTH <= (SSD1306.CurrentX + Font->FontWidth) ||
-		SSD1306_HEIGHT <= (SSD1306.CurrentY + Font->FontHeight)
+		SSD1306_WIDTH <= (SSD1306_Data.CurrentX + Font->FontWidth) ||
+		SSD1306_HEIGHT <= (SSD1306_Data.CurrentY + Font->FontHeight)
 	) {
 		/* Error */
 		return 0;
@@ -565,15 +566,15 @@ char SSD1306_Putc(char ch, FontDef_t* Font, SSD1306_COLOR_t color) {
 		b = Font->data[(ch - 32) * Font->FontHeight + i];
 		for (j = 0; j < Font->FontWidth; j++) {
 			if ((b << j) & 0x8000) {
-				SSD1306_DrawPixel(SSD1306.CurrentX + j, (SSD1306.CurrentY + i), (SSD1306_COLOR_t) color);
+				SSD1306_DrawPixel(SSD1306_Data.CurrentX + j, (SSD1306_Data.CurrentY + i), (SSD1306_COLOR_t) color);
 			} else {
-				SSD1306_DrawPixel(SSD1306.CurrentX + j, (SSD1306.CurrentY + i), (SSD1306_COLOR_t)!color);
+				SSD1306_DrawPixel(SSD1306_Data.CurrentX + j, (SSD1306_Data.CurrentY + i), (SSD1306_COLOR_t)!color);
 			}
 		}
 	}
 	
 	/* Increase pointer */
-	SSD1306.CurrentX += Font->FontWidth;
+	SSD1306_Data.CurrentX += Font->FontWidth;
 	
 	/* Return character written */
 	return ch;
@@ -1020,28 +1021,29 @@ void initScreen(){
 }
 
 void refreshScreen() {
-	if (!SSD1306.Initialized) return;
+	if (!SSD1306_Data.Initialized) return;
 #ifdef SCREEN_FONT_DYNAMIC
     uint16_t y_position = 0; // Start at the top of the screen
+    uint16_t max_width = SSD1306_WIDTH; // Maximum width of the screen
     uint16_t max_height = SSD1306_HEIGHT; // Maximum height of the screen
     uint16_t remaining_height = max_height; // Remaining height for dynamic font sizes
 
-    // Always use Font_7x10 for oled_string1
+    // Always use Font_7x10 for SSD1306_Data.oled_string1
     SSD1306_GotoXY(0, y_position);
-    SSD1306_Puts(oled_string1, &Font_7x10, 1);
+    SSD1306_Puts(SSD1306_Data.oled_string1, &Font_7x10, 1);
     y_position += Font_7x10.FontHeight;
     remaining_height -= Font_7x10.FontHeight;
 
-    // Explicitly set oled_string2 at position (0, 16) with Font_7x10
+    // Explicitly set SSD1306_Data.oled_string2 at position (0, 16) with Font_7x10
     SSD1306_GotoXY(0, 16);
-    SSD1306_Puts(oled_string2, &Font_7x10, 1);
+    SSD1306_Puts(SSD1306_Data.oled_string2, &Font_7x10, 1);
     remaining_height -= Font_7x10.FontHeight;
 
     // Define an array of remaining strings and iterate through them
-    char* strings[] = {oled_string3, oled_string4, oled_string5};
+    char* strings[] = {SSD1306_Data.oled_string3, SSD1306_Data.oled_string4, SSD1306_Data.oled_string5};
     uint8_t num_strings = sizeof(strings) / sizeof(strings[0]);
 
-    // Start y_position after oled_string2
+    // Start y_position after SSD1306_Data.oled_string2
     y_position = 16 + Font_7x10.FontHeight;
 
     for (uint8_t i = 0; i < num_strings && i < 3; i++) { // Limit to 3 additional strings (total 5 strings)
@@ -1070,15 +1072,15 @@ void refreshScreen() {
     }
 
 #else
-    // Fixed font size for all strings except oled_string1
+    // Fixed font size for all strings except SSD1306_Data.oled_string1
     SSD1306_GotoXY(0, 0);
-    SSD1306_Puts(oled_string1, &Font_7x10, 1);
+    SSD1306_Puts(SSD1306_Data.oled_string1, &Font_7x10, 1);
 
     SSD1306_GotoXY(0, 16);
-    SSD1306_Puts(oled_string2, &Font_11x18, 1);
+    SSD1306_Puts(SSD1306_Data.oled_string2, &Font_11x18, 1);
 
     SSD1306_GotoXY(0, 34);
-    SSD1306_Puts(oled_string3, &Font_11x18, 1);
+    SSD1306_Puts(SSD1306_Data.oled_string3, &Font_11x18, 1);
 
 
 #endif

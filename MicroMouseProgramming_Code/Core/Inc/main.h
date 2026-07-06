@@ -28,10 +28,21 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l4xx_hal.h"
+#include "stm32l4xx_ll_dma.h"
+#include "stm32l4xx_ll_usart.h"
+#include "stm32l4xx_ll_rcc.h"
+#include "stm32l4xx_ll_bus.h"
+#include "stm32l4xx_ll_cortex.h"
+#include "stm32l4xx_ll_system.h"
+#include "stm32l4xx_ll_utils.h"
+#include "stm32l4xx_ll_pwr.h"
+#include "stm32l4xx_ll_gpio.h"
+
+#include "stm32l4xx_ll_exti.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#define I2C_TIMEOUT 20
+#define I2C_TIMEOUT 10
 
 /* USER CODE END Includes */
 
@@ -76,10 +87,12 @@ void initUSB(void);
 void refreshUSB(void);
 void logSelectedVariables(void);
 void updateMicroMouse(void);
-void restartI2C(void);
+void restartI2C(I2C_HandleTypeDef *hi2c);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define XSHUT5_Pin GPIO_PIN_2
+#define XSHUT5_GPIO_Port GPIOE
 #define XSHUT3_Pin GPIO_PIN_3
 #define XSHUT3_GPIO_Port GPIOE
 #define SW1_Pin GPIO_PIN_6
@@ -100,10 +113,12 @@ void restartI2C(void);
 #define ADC_MOT_LS_GPIO_Port GPIOB
 #define SW2_Pin GPIO_PIN_2
 #define SW2_GPIO_Port GPIOB
+#define XSHUT1_Pin GPIO_PIN_8
+#define XSHUT1_GPIO_Port GPIOE
 #define LED_MOT_LS_Pin GPIO_PIN_9
 #define LED_MOT_LS_GPIO_Port GPIOE
-#define XSHUT1_Pin GPIO_PIN_10
-#define XSHUT1_GPIO_Port GPIOE
+#define XSHUT4_Pin GPIO_PIN_10
+#define XSHUT4_GPIO_Port GPIOE
 #define LED_DOWN_LS_Pin GPIO_PIN_11
 #define LED_DOWN_LS_GPIO_Port GPIOE
 #define LED_MOT_RS_Pin GPIO_PIN_13
@@ -112,20 +127,34 @@ void restartI2C(void);
 #define LED_DOWN_RS_GPIO_Port GPIOE
 #define XSHUT2_Pin GPIO_PIN_15
 #define XSHUT2_GPIO_Port GPIOE
-#define MOT_RIGHT_FWD_Pin GPIO_PIN_12
-#define MOT_RIGHT_FWD_GPIO_Port GPIOD
-#define MOT_RIGHT_BWD_Pin GPIO_PIN_13
-#define MOT_RIGHT_BWD_GPIO_Port GPIOD
-#define MOT_LEFT_FWD_Pin GPIO_PIN_8
-#define MOT_LEFT_FWD_GPIO_Port GPIOC
-#define MOT_LEFT_BWD_Pin GPIO_PIN_9
-#define MOT_LEFT_BWD_GPIO_Port GPIOC
+#define MOTORR_A_ENC_Pin GPIO_PIN_12
+#define MOTORR_A_ENC_GPIO_Port GPIOD
+#define MOTORR_B_ENC_Pin GPIO_PIN_13
+#define MOTORR_B_ENC_GPIO_Port GPIOD
+#define MOTORL_A_ENC_Pin GPIO_PIN_14
+#define MOTORL_A_ENC_GPIO_Port GPIOD
+#define MOTORL_B_ENC_Pin GPIO_PIN_15
+#define MOTORL_B_ENC_GPIO_Port GPIOD
+#define MOTORR_A_EN_Pin GPIO_PIN_6
+#define MOTORR_A_EN_GPIO_Port GPIOC
+#define MOTORR_B_EN_Pin GPIO_PIN_7
+#define MOTORR_B_EN_GPIO_Port GPIOC
+#define MOTORL_A_EN_Pin GPIO_PIN_8
+#define MOTORL_A_EN_GPIO_Port GPIOC
+#define MOTORL_B_EN_Pin GPIO_PIN_9
+#define MOTORL_B_EN_GPIO_Port GPIOC
+#define XSHUT8_Pin GPIO_PIN_8
+#define XSHUT8_GPIO_Port GPIOA
+#define XSHUT7_Pin GPIO_PIN_3
+#define XSHUT7_GPIO_Port GPIOD
 #define MOTOR_EN_Pin GPIO_PIN_7
 #define MOTOR_EN_GPIO_Port GPIOD
 #define CTRL_LEDS_Pin GPIO_PIN_3
 #define CTRL_LEDS_GPIO_Port GPIOB
-#define MPU6050_INT_Pin GPIO_PIN_5
-#define MPU6050_INT_GPIO_Port GPIOB
+#define IMU_INT_Pin GPIO_PIN_5
+#define IMU_INT_GPIO_Port GPIOB
+#define XSHUT9_Pin GPIO_PIN_0
+#define XSHUT9_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
 

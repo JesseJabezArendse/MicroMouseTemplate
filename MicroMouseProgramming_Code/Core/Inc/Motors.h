@@ -20,12 +20,32 @@
 #include "stm32l4xx.h"
 #include "main.h"
 
-// Motor control variables
-extern int8_t MOTOR_LS;
-extern int8_t MOTOR_RS;
+// GPIO pin defines
+#define MOTOR_EN_Pin            GPIO_PIN_7
+#define MOTOR_EN_GPIO_Port      GPIOD
+
+// Encoder input pins (TIM4 input capture)
+#define MOTORR_A_ENC_Pin        GPIO_PIN_12
+#define MOTORR_A_ENC_GPIO_Port  GPIOD
+#define MOTORR_B_ENC_Pin        GPIO_PIN_13
+#define MOTORR_B_ENC_GPIO_Port  GPIOD
+#define MOTORL_A_ENC_Pin        GPIO_PIN_14
+#define MOTORL_A_ENC_GPIO_Port  GPIOD
+#define MOTORL_B_ENC_Pin        GPIO_PIN_15
+#define MOTORL_B_ENC_GPIO_Port  GPIOD
+
+typedef struct
+{
+	int16_t	magnitude;	// Speed: negative = reverse, positive = forward (-100 to +100)
+	int16_t	encoderRate;	// Motor speed in fixed-point RPM*100 (e.g., 123.45 RPM -> 12345)
+} Motor_t;
+
 
 // Function declarations
 void initMotors();
 void refreshMotors();
+
+extern Motor_t MOTOR_L;
+extern Motor_t MOTOR_R; 
 
 #endif

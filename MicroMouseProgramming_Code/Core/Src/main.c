@@ -65,10 +65,6 @@ TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
 TIM_HandleTypeDef htim7;
 
-UART_HandleTypeDef huart1;
-DMA_HandleTypeDef hdma_usart1_rx;
-DMA_HandleTypeDef hdma_usart1_tx;
-
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -85,26 +81,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int8_t expectedHeader[3] = {'J', '_', 'A'};
-int8_t expectedTerminator[3] = {'A', '_', 'J'};
-
 int32_t counter = 0;
-
-// from this file
-float SW1;
-float SW2;
-
-int8_t bigBuffer[3+5+(18*5)+1+3]; // 5 bytes for mouse control + headers and terminators
-uint8_t headerBuffer[3];  // Buffer to receive header bytes
-uint8_t header[3];
-uint8_t terminator[3];
-int8_t buffer[5];
-uint8_t headerIndex = 0;  // Index for tracking header reception progress
-bool expecting_packet = false;  // Flag to track if we're expecting a full packet
-
-bool LED0 = 0;
-bool LED1 = 0;
-bool LED2 = 0;
 
 // ADCs
 extern uint16_t ADCs[5];
@@ -115,26 +92,26 @@ extern uint16_t V_PHOTO_DOWN_RS;
 extern uint16_t V_PHOTO_MOT_LS;
 extern uint16_t V_PHOTO_MOT_RS;
 
-extern int8_t MOTOR_LS;
-extern int8_t MOTOR_RS;
-
 // from other files
 extern float IMU_Accel[3];
 extern float IMU_Gyro[3];
 extern float IMU_Temp;
 
-extern VL53L0_t TOF_left_result;
-extern VL53L0_t TOF_centre_result;
-extern VL53L0_t TOF_right_result;
+extern VL53L0_t TOF_sb_left_result;
+extern VL53L0_t TOF_sb_front_result;
+extern VL53L0_t TOF_sb_right_result;
+extern VL53L0_t TOF_sb_front_left_result;
+extern VL53L0_t TOF_sb_front_right_result;
+extern VL53L0_t TOF_mb_back_result;
+extern VL53L0_t TOF_mb_front_result;
+extern VL53L0_t TOF_mb_front_left_result;
+extern VL53L0_t TOF_mb_front_right_result;
 
-extern char oled_string1[19];
-extern char oled_string2[19];
-extern char oled_string3[19];
-extern char oled_string4[19];
-extern char oled_string5[19];
-
-extern uint8_t LED[3];
-extern uint8_t SW[2];
+extern LED_t LED0;
+extern LED_t LED1;
+extern LED_t LED2;
+extern SW_t SW1;
+extern SW_t SW2;
 
 extern uint8_t batteryLife;
 extern int16_t Vbattery, Vshunt, Current, config, Power;
@@ -148,19 +125,16 @@ extern uint8_t readyToLog;
 extern uint32_t log_flash_write_addr;
 extern uint32_t log_flash_start_addr;
 uint8_t log_time_counter = 0;
- uint16_t log_sample_counter = 0;  // Wraps at 65535
+uint16_t log_sample_counter = 0;  // Wraps at 65535
  
 
 // Global header configuration - modify these values as needed
 uint8_t LOG_VERSION = 1;
 uint8_t LOG_SAMPLING_RATE_HZ = 25;  // Will be dynamically calculated in initLogs()
 uint8_t EXPECTED_MINUTES = 5;
-uint8_t STUDENT_NUMBER[9] = {'A','B','C','D','E','F','1','2','3'};  // 9 characters
+uint8_t STUDENT_NUMBER[9] = "ABCDEF123";  // 9 characters
 
 // Flash region detection structures (populated during initLogs)
-#ifdef FLASH_END
-#undef FLASH_END
-#endif
 #define FLASH_END 0x08080000
 #define FLASH_START 0x08000000
 #define PAGE_SIZE 2048
@@ -212,99 +186,10 @@ void configureTimer(float desired_frequency, TIM_TypeDef* tim) {
 }
 
 void sendToSimulink(){
-    HAL_UART_Transmit(&huart1, (uint8_t *) "J_A"           ,3 , HAL_MAX_DELAY);
+    // UART removed — use MicroMouse_main.c for UART-based Simulink comms
 
-    // Switches
-    HAL_UART_Transmit(&huart1,(const uint8_t*)  &SW1     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,(const uint8_t *) &SW2     ,4 , HAL_MAX_DELAY);
-
-  // IMU
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Accel[0]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Accel[1]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Accel[2]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Gyro[0]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Gyro[1]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Gyro[2]     ,4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&IMU_Temp         ,4 , HAL_MAX_DELAY);
-
-
-  // TOF
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_left_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_left_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_left_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_left_result.Status  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_centre_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_centre_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_centre_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_centre_result.Status  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_right_result.Distance)  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_right_result.Ambient )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_right_result.Signal  )  , 4 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (const uint8_t *)&(TOF_right_result.Status  )  , 4 , HAL_MAX_DELAY);
-
-    // VBAT, MOT_RS , DOWN_RS , DOWN_LS , MOT_LS
-    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[0]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[0]  )  , 2 , HAL_MAX_DELAY);
-
-    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[1]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[1]  )  , 2 , HAL_MAX_DELAY);
-
-    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[2]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[2]  )  , 2 , HAL_MAX_DELAY);
-
-    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[3]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[3]  )  , 2 , HAL_MAX_DELAY);
-
-    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[4]  )  , 2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1,  (const uint8_t *)&(ADCs[4]  )  , 2 , HAL_MAX_DELAY);
-
-    // INA219
-    HAL_UART_Transmit(&huart1, (uint8_t *) &Vbattery     ,2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (uint8_t *) &Vshunt       ,2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (uint8_t *) &Current      ,2 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (uint8_t *) &Power        ,2 , HAL_MAX_DELAY); 
-    HAL_UART_Transmit(&huart1, (uint8_t *) &batteryLife  ,1 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (uint8_t *) &batteryLife  ,1 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (uint8_t *) &batteryLife  ,1 , HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart1, (uint8_t *) &batteryLife  ,1 , HAL_MAX_DELAY);
-
-
-
-    HAL_UART_Transmit(&huart1, (const uint8_t *) &counter         ,4 , HAL_MAX_DELAY);
-    // HAL_UART_Transmit(&huart1, (uint8_t *) "A_J"      ,3 , HAL_MAX_DELAY);
 }
 
-void recievedFromSimulink(){
-    // Data has been received via DMA into bigBuffer
-    // We only reach here if the header was already verified
-    expecting_packet = false; // Reset flag as packet has been received
-    
-    // Extract and verify terminator bytes
-    memcpy(terminator, bigBuffer + (sizeof(bigBuffer) - 3), 3);
-    
-    if (terminator[0] == expectedTerminator[0] && terminator[1] == expectedTerminator[1] && terminator[2] == expectedTerminator[2]){
-        LED[0] = bigBuffer[3];
-        LED[1] = bigBuffer[4];
-        LED[2] = bigBuffer[5];
-
-        MOTOR_LS = bigBuffer[6];
-        MOTOR_RS = bigBuffer[7];
-
-        for (int i = 0; i < 18; i++) {
-            oled_string1[i] = bigBuffer[8 + i];
-            oled_string2[i] = bigBuffer[26 + i];
-            oled_string3[i] = bigBuffer[44 + i];
-            oled_string4[i] = bigBuffer[62 + i];
-            oled_string5[i] = bigBuffer[80 + i];
-        }
-
-        STATE = bigBuffer[98];
-    }
-    
-    // Restart header reception for next packet
-    headerIndex = 0;
-    HAL_UART_Receive_IT(&huart1, &headerBuffer[headerIndex], 1);
-}
 
 uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAddresses) {
     uint8_t found = 0;
@@ -318,18 +203,15 @@ uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAd
     return found;
 }
 
-void restartI2C(){
+void restartI2C(I2C_HandleTypeDef *hi2c){
   #ifdef I2C_SAFE_RESTART
     TIM3->CCR4 = 0;
     TIM3->CCR3 = 0;
     TIM4->CCR2 = 0;
     TIM4->CCR1 = 0;
   #endif
-  HAL_I2C_DeInit(&hi2c1);
-  HAL_I2C_Init(&hi2c1);
-  HAL_I2C_DeInit(&hi2c2);
-  HAL_I2C_Init(&hi2c2);
-  // Attempt to clear I2C bus error (BERR)}
+  HAL_I2C_DeInit(hi2c);
+  HAL_I2C_Init(hi2c);
 }
 // Logging
 
@@ -350,8 +232,11 @@ typedef struct __attribute__((packed)) {
     int8_t Motor_Left;
     int8_t Motor_Right;
     uint16_t Distance_Left;
+    uint16_t Distance_Front_Left;
     uint16_t Distance_Centre;
+    uint16_t Distance_Front_Right;
     uint16_t Distance_Right;
+    uint16_t Distance_Back;
     uint8_t PHOTO_DOWN_LS;     // Voltage 0-3.3V mapped to 0-255
     uint8_t PHOTO_DOWN_RS;
     uint8_t PHOTO_MOT_LS;
@@ -509,7 +394,7 @@ void refreshLoggedData() {
     if (!readyToLog) return;
     readyToLog = false;
     // Enable logging if any button is pressed (active low)
-    if (!logging_enabled && (SW[0] != SW[1])) {
+    if (!logging_enabled && (SW1.state != SW2.state)) {
         logging_enabled = true;
         HAL_GPIO_WritePin(MOTOR_EN_GPIO_Port , MOTOR_EN_Pin , GPIO_PIN_SET);
     }
@@ -618,7 +503,7 @@ void refreshLoggedData() {
         usb_storage_buffer_index[active_usb_buffer] = sizeof(MicroMouseLogHeader_t);
         
         // Change OLED to show logging started: "LOGGING RUN :   0%" (18 chars)
-        snprintf(oled_string1, 19, "LOGGING RUN :   0%%");
+        snprintf(SSD1306_Data.oled_string1, 19, "LOGGING RUN :   0%%");
         
         first_buffer = false;
     }
@@ -627,12 +512,15 @@ void refreshLoggedData() {
     log.sample_count = log_sample_counter++;  // Auto-wraps at 65535
     log.state = STATE;
     // Pack LEDs into single byte: bit0=LED0, bit1=LED1, bit2=LED2
-    log.LEDs = (LED[0] & 0x01) | ((LED[1] & 0x01) << 1) | ((LED[2] & 0x01) << 2);
-    log.Motor_Left = MOTOR_LS;
-    log.Motor_Right = MOTOR_RS;
-    log.Distance_Left = (uint16_t)(TOF_left_result.Distance > 4095 ? 4095 : TOF_left_result.Distance);
-    log.Distance_Centre = (uint16_t)(TOF_centre_result.Distance > 4095 ? 4095 : TOF_centre_result.Distance);
-    log.Distance_Right = (uint16_t)(TOF_right_result.Distance > 4095 ? 4095 : TOF_right_result.Distance);
+    log.LEDs = (LED0.state & 0x01) | ((LED1.state & 0x01) << 1) | ((LED2.state & 0x01) << 2);
+    log.Motor_Left = (int8_t)MOTOR_L.magnitude;
+    log.Motor_Right = (int8_t)MOTOR_R.magnitude;
+    log.Distance_Left = (uint16_t)(TOF_sb_left_result.Distance > 4095 ? 4095 : TOF_sb_left_result.Distance);
+    log.Distance_Front_Left = (uint16_t)(TOF_sb_front_left_result.Distance > 4095 ? 4095 : TOF_sb_front_left_result.Distance);
+    log.Distance_Centre = (uint16_t)(TOF_sb_front_result.Distance > 4095 ? 4095 : TOF_sb_front_result.Distance);
+    log.Distance_Front_Right = (uint16_t)(TOF_sb_front_right_result.Distance > 4095 ? 4095 : TOF_sb_front_right_result.Distance);
+    log.Distance_Right = (uint16_t)(TOF_sb_right_result.Distance > 4095 ? 4095 : TOF_sb_right_result.Distance);
+    log.Distance_Back = (uint16_t)(TOF_mb_back_result.Distance > 4095 ? 4095 : TOF_mb_back_result.Distance);
     // Convert ADC (0-65535) to voltage uint8 (0-255 representing 0-3.3V)
     log.PHOTO_DOWN_LS = (uint8_t)((V_PHOTO_DOWN_LS * 255UL) / 65535UL);
     log.PHOTO_DOWN_RS = (uint8_t)((V_PHOTO_DOWN_RS * 255UL) / 65535UL);
@@ -678,17 +566,17 @@ void refreshLoggedData() {
             
             // Update percentage digits at positions 14, 15, 16 (% stays at position 17)
             if (percentage < 10) {
-                oled_string1[14] = ' ';
-                oled_string1[15] = ' ';
-                oled_string1[16] = '0' + percentage;
+                SSD1306_Data.oled_string1[14] = ' ';
+                SSD1306_Data.oled_string1[15] = ' ';
+                SSD1306_Data.oled_string1[16] = '0' + percentage;
             } else if (percentage < 100) {
-                oled_string1[14] = ' ';
-                oled_string1[15] = '0' + (percentage / 10);
-                oled_string1[16] = '0' + (percentage % 10);
+                SSD1306_Data.oled_string1[14] = ' ';
+                SSD1306_Data.oled_string1[15] = '0' + (percentage / 10);
+                SSD1306_Data.oled_string1[16] = '0' + (percentage % 10);
             } else {
-                oled_string1[14] = '1';
-                oled_string1[15] = '0';
-                oled_string1[16] = '0';
+                SSD1306_Data.oled_string1[14] = '1';
+                SSD1306_Data.oled_string1[15] = '0';
+                SSD1306_Data.oled_string1[16] = '0';
             }
             
             // Check if we just wrote to the last page (0x0807F800 to 0x0807FFFF)
@@ -699,20 +587,21 @@ void refreshLoggedData() {
                 
                 // Turn off motor control FET
                 HAL_GPIO_WritePin(MOTOR_EN_GPIO_Port, MOTOR_EN_Pin, GPIO_PIN_RESET);
-        MOTOR_LS = 0;
-        MOTOR_RS = 0;
+        MOTOR_L.magnitude = 0;
+        MOTOR_R.magnitude = 0;
                 
                 // Display on OLED
-                snprintf(oled_string1, sizeof(oled_string1), "LOGS FULL!");
-                snprintf(oled_string2, sizeof(oled_string2), "Safe Mode");
+                snprintf(SSD1306_Data.oled_string1, sizeof(SSD1306_Data.oled_string1), "LOGS FULL!");
+                snprintf(SSD1306_Data.oled_string2, sizeof(SSD1306_Data.oled_string2), "Safe Mode");
         refreshScreen();
                 
                 // Infinite loop with LED blinking (1 second on/off using NOP delay)
                 while(1) {
                     // Turn LEDs on
-                    LED[0] = 1;
-                    LED[1] = 1;
-                    LED[2] = 1;
+                    LED0.state = 1;
+                    LED1.state = 1;
+                    LED2.state = 1;
+                    refreshLEDs();
                     
                     // ~1 second delay using NOPs (80MHz clock, ~80M NOPs = 1 sec)
                     for(volatile uint32_t i = 0; i < 20000000; i++) {
@@ -720,9 +609,10 @@ void refreshLoggedData() {
                     }
                     
                     // Turn LEDs off
-                    LED[0] = 0;
-                    LED[1] = 0;
-                    LED[2] = 0;
+                    LED0.state = 0;
+                    LED1.state = 0;
+                    LED2.state = 0;
+                    refreshLEDs();
                     
                     // ~1 second delay using NOPs
                     for(volatile uint32_t i = 0; i < 20000000; i++) {
@@ -738,6 +628,8 @@ void refreshLoggedData() {
     readyToLog = false;
 }
 
+#ifndef COMPILED_BY_SIMULINK
+
 void initMicroMouse(){
   TIM3->CCR4 = 0;
   TIM3->CCR3 = 0;
@@ -751,8 +643,6 @@ void initMicroMouse(){
   uint8_t found2[5];
   uint8_t num1 = I2C_Scan(&hi2c1, found1, 1);
   uint8_t num2 = I2C_Scan(&hi2c2, found2, 5);
-  (void)num1;
-  (void)num2;
 
   initScreen();
   initINA219();
@@ -764,8 +654,7 @@ void initMicroMouse(){
   initLogs();
 }
 
-#ifndef COMPILED_BY_SIMULINK
-bool simulink_talking = false;
+#define STARTUP_HOLD_MS 5000
 
 void updateMicroMouse(){
   // Motor Control
@@ -776,12 +665,12 @@ void updateMicroMouse(){
 
   // update screen
   refreshADCs();
-  refreshScreen();
+  // refreshScreen();
 
   // Show sensor data on screen as integers, each digit explicit
-  int left_mm = (int)(TOF_left_result.Distance);
-  int centre_mm = (int)(TOF_centre_result.Distance);
-  int right_mm = (int)(TOF_right_result.Distance);
+  int left_mm = (int)(TOF_sb_left_result.Distance);
+  int centre_mm = (int)(TOF_sb_front_result.Distance);
+  int right_mm = (int)(TOF_sb_right_result.Distance);
   int accel_x = (int)(IMU_Accel[0] * 1000); // scale to show 2 decimals as int
   int accel_y = (int)(IMU_Accel[1] * 1000);
   int accel_z = (int)(IMU_Accel[2] * 1000);
@@ -791,18 +680,6 @@ void updateMicroMouse(){
   int vbatt_mv = (int)Vbattery;
   int current_ma = (int)Current;
   int batt_pct = (int)batteryLife;
-  (void)left_mm;
-  (void)centre_mm;
-  (void)right_mm;
-  (void)accel_x;
-  (void)accel_y;
-  (void)accel_z;
-  (void)gyro_x;
-  (void)gyro_y;
-  (void)gyro_z;
-  (void)vbatt_mv;
-  (void)current_ma;
-  (void)batt_pct;
 
 
   refreshLEDs();
@@ -810,19 +687,17 @@ void updateMicroMouse(){
   refreshTOFValues();
   refreshIMUValues();
   refreshINA219Values();
+
+  // Block motors for the first STARTUP_HOLD_MS milliseconds after boot
+  if (HAL_GetTick() < STARTUP_HOLD_MS) {
+    MOTOR_L.magnitude = 0;
+    MOTOR_R.magnitude = 0;
+  }
+
   refreshMotors();
   refreshLoggedData();
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-  if(huart->Instance == USART1){
-    simulink_talking = true;
-    recievedFromSimulink();
-  }
-}
-
-
-#ifndef COMPILING_FOR_MICROPYTHON
 void main(void)
 {
   // Initialize the HAL Library; it must be the first function to be executed
@@ -842,7 +717,6 @@ void main(void)
   MX_TIM4_Init();
   MX_TIM5_Init();
   MX_TIM7_Init();
-  MX_USART1_UART_Init();
   MX_NVIC_Init();
 
 
@@ -853,10 +727,6 @@ void main(void)
   configureTimer(100, TIM5); // Example: configure TIM1 for a frequency of 1000 Hz
 
   HAL_TIM_Base_Start_IT(&htim5);
-
-  HAL_UART_Receive_DMA(&huart1,(uint8_t *) &bigBuffer, sizeof(bigBuffer));
-
-  HAL_Delay(5000);
 
   while (1)
   {
@@ -873,83 +743,6 @@ void main(void)
     // counter++;
   }
 }
-#endif /* COMPILING_FOR_MICROPYTHON */
-#endif /* COMPILED_BY_SIMULINK */
-
-#ifdef COMPILED_BY_SIMULINK
-#ifdef RUN_STUDENT_TEMPLATE
-#include "StudentTemplate.h"
-#define MODEL_INITIALIZE StudentTemplate_initialize
-#define MODEL_STEP StudentTemplate_step
-#define MODEL_PARAMS StudentTemplate_P
-#else
-#include "MicroMouse_Deploy.h"
-#define MODEL_INITIALIZE MicroMouse_Deploy_initialize
-#define MODEL_STEP MicroMouse_Deploy_step
-#define MODEL_PARAMS MicroMouse_Deploy_P
-#endif
-
-#ifndef COMPILING_FOR_MICROPYTHON
-void main(void)
-{
-  // Initialize the HAL Library; it must be the first function to be executed
-  HAL_Init();
-
-  // Configure the system clock
-  SystemClock_Config();
-
-  // Initialize all configured peripherals
-  MX_DMA_Init();
-  MX_GPIO_Init();
-  MX_ADC1_Init();
-  MX_I2C1_Init();
-  MX_I2C2_Init();
-  MX_TIM1_Init();
-  MX_TIM3_Init();
-  MX_TIM4_Init();
-  MX_TIM5_Init();
-  MX_TIM7_Init();
-  MX_USART1_UART_Init();
-  MX_NVIC_Init();
-
-  initMicroMouse();
-
-  // Configure timers for desired frequencies
-  configureTimer(100, TIM5); 
-  HAL_TIM_Base_Start_IT(&htim5);
-
-  HAL_UART_Receive_DMA(&huart1, (uint8_t *)&bigBuffer, sizeof(bigBuffer));
-
-  HAL_Delay(5000);
-
-  char temp_title[19];
-  strncpy(temp_title, oled_string1, 18);
-  temp_title[18] = '\0';
-
-  // Initialize Simulink model
-  MODEL_INITIALIZE();
-
-  // If the model initialization cleared the title string to empty, copy from model parameters or restore original
-  if (oled_string1[0] == '\0') {
-    if (MODEL_PARAMS.OLED_STRING1_String[0] != '\0') {
-      strncpy(oled_string1, MODEL_PARAMS.OLED_STRING1_String, 18);
-      oled_string1[18] = '\0';
-    } else if (temp_title[0] != '\0') {
-      strcpy(oled_string1, temp_title);
-    }
-  }
-
-  // Enable motors by default under Simulink build so they turn immediately
-  HAL_GPIO_WritePin(MOTOR_EN_GPIO_Port, MOTOR_EN_Pin, GPIO_PIN_SET);
-
-  while (1)
-  {
-    // Execute Simulink model step
-    MODEL_STEP();
-    HAL_Delay(10); // Run at 100Hz
-  }
-}
-#endif /* COMPILING_FOR_MICROPYTHON */
 #endif /* COMPILED_BY_SIMULINK */
 /* USER CODE END 0 */
 
@@ -978,13 +771,12 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 1;
-  RCC_OscInitStruct.PLL.PLLN = 10;
+  RCC_OscInitStruct.PLL.PLLN = 20;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
   RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV4;
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
@@ -1006,6 +798,10 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
+  /** Enables the Clock Security System
+  */
+  HAL_RCC_EnableCSS();
 }
 #endif
 
@@ -1022,9 +818,6 @@ void SystemClock_Config(void)
   /* RCC_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(RCC_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(RCC_IRQn);
-  /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
   /* ADC1_2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
@@ -1035,14 +828,17 @@ void SystemClock_Config(void)
   HAL_NVIC_SetPriority(TIM5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM5_IRQn);
   /* DMA2_Channel6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel6_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Channel6_IRQn);
+  NVIC_SetPriority(DMA2_Channel6_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(DMA2_Channel6_IRQn);
   /* DMA2_Channel7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);
+  NVIC_SetPriority(DMA2_Channel7_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(DMA2_Channel7_IRQn);
   /* TIM7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM7_IRQn);
+  /* DMA2_Channel3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel3_IRQn);
 }
 
 /**
@@ -1365,9 +1161,9 @@ void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 8000-1;
+  htim3.Init.Prescaler = 4-1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 100-1;
+  htim3.Init.Period = 1000-1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -1391,8 +1187,16 @@ void MX_TIM3_Init(void)
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
   {
     Error_Handler();
@@ -1422,15 +1226,15 @@ void MX_TIM4_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_IC_InitTypeDef sConfigIC = {0};
 
   /* USER CODE BEGIN TIM4_Init 1 */
 
   /* USER CODE END TIM4_Init 1 */
   htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 8000-1;
+  htim4.Init.Prescaler = 80-1;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 100-1;
+  htim4.Init.Period = 0xFFFF;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
@@ -1442,7 +1246,7 @@ void MX_TIM4_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  if (HAL_TIM_IC_Init(&htim4) != HAL_OK)
   {
     Error_Handler();
   }
@@ -1452,22 +1256,29 @@ void MX_TIM4_Init(void)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+  sConfigIC.ICFilter = 0;
+  if (HAL_TIM_IC_ConfigChannel(&htim4, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  if (HAL_TIM_IC_ConfigChannel(&htim4, &sConfigIC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_IC_ConfigChannel(&htim4, &sConfigIC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_IC_ConfigChannel(&htim4, &sConfigIC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
   }
   /* USER CODE BEGIN TIM4_Init 2 */
 
   /* USER CODE END TIM4_Init 2 */
-  HAL_TIM_MspPostInit(&htim4);
 
 }
 
@@ -1566,23 +1377,85 @@ void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 0 */
 
-  /* USER CODE BEGIN USART1_Init 1 */
+  LL_USART_InitTypeDef USART_InitStruct = {0};
 
-  /* USER CODE END USART1_Init 1 */
-  huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
-  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-  huart1.Init.StopBits = UART_STOPBITS_1;
-  huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_TX_RX;
-  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart1) != HAL_OK)
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
+
+  /** Initializes the peripherals clock
+  */
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1;
+  PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
+
+  /* Peripheral clock enable */
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_USART1);
+
+  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
+  /**USART1 GPIO Configuration
+  PB6   ------> USART1_TX
+  PB7   ------> USART1_RX
+  */
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_6|LL_GPIO_PIN_7;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
+  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* USART1 DMA Init */
+
+  /* USART1_RX Init */
+  LL_DMA_SetPeriphRequest(DMA2, LL_DMA_CHANNEL_7, LL_DMA_REQUEST_2);
+
+  LL_DMA_SetDataTransferDirection(DMA2, LL_DMA_CHANNEL_7, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+
+  LL_DMA_SetChannelPriorityLevel(DMA2, LL_DMA_CHANNEL_7, LL_DMA_PRIORITY_LOW);
+
+  LL_DMA_SetMode(DMA2, LL_DMA_CHANNEL_7, LL_DMA_MODE_CIRCULAR);
+
+  LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_CHANNEL_7, LL_DMA_PERIPH_NOINCREMENT);
+
+  LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_CHANNEL_7, LL_DMA_MEMORY_INCREMENT);
+
+  LL_DMA_SetPeriphSize(DMA2, LL_DMA_CHANNEL_7, LL_DMA_PDATAALIGN_BYTE);
+
+  LL_DMA_SetMemorySize(DMA2, LL_DMA_CHANNEL_7, LL_DMA_MDATAALIGN_BYTE);
+
+  /* USART1_TX Init */
+  LL_DMA_SetPeriphRequest(DMA2, LL_DMA_CHANNEL_6, LL_DMA_REQUEST_2);
+
+  LL_DMA_SetDataTransferDirection(DMA2, LL_DMA_CHANNEL_6, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+
+  LL_DMA_SetChannelPriorityLevel(DMA2, LL_DMA_CHANNEL_6, LL_DMA_PRIORITY_LOW);
+
+  LL_DMA_SetMode(DMA2, LL_DMA_CHANNEL_6, LL_DMA_MODE_NORMAL);
+
+  LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_CHANNEL_6, LL_DMA_PERIPH_NOINCREMENT);
+
+  LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_CHANNEL_6, LL_DMA_MEMORY_INCREMENT);
+
+  LL_DMA_SetPeriphSize(DMA2, LL_DMA_CHANNEL_6, LL_DMA_PDATAALIGN_BYTE);
+
+  LL_DMA_SetMemorySize(DMA2, LL_DMA_CHANNEL_6, LL_DMA_MDATAALIGN_BYTE);
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  USART_InitStruct.BaudRate = 1843200;
+  USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
+  USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
+  USART_InitStruct.Parity = LL_USART_PARITY_NONE;
+  USART_InitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
+  USART_InitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
+  USART_InitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
+  LL_USART_Init(USART1, &USART_InitStruct);
+  LL_USART_ConfigAsyncMode(USART1);
+  LL_USART_Enable(USART1);
   /* USER CODE BEGIN USART1_Init 2 */
 
   /* USER CODE END USART1_Init 2 */
@@ -1595,9 +1468,9 @@ void MX_USART1_UART_Init(void)
 void MX_DMA_Init(void)
 {
 
+  /* Init with LL driver */
   /* DMA controller clock enable */
-  __HAL_RCC_DMA2_CLK_ENABLE();
-  __HAL_RCC_DMA1_CLK_ENABLE();
+  LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA2);
 
 }
 
@@ -1609,8 +1482,8 @@ void MX_DMA_Init(void)
 void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -1621,7 +1494,8 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, XSHUT3_Pin|XSHUT1_Pin|XSHUT2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, XSHUT5_Pin|XSHUT3_Pin|XSHUT1_Pin|XSHUT4_Pin
+                          |XSHUT2_Pin|XSHUT9_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_SET);
@@ -1630,30 +1504,40 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, LED1_Pin|LED2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(MOTOR_EN_GPIO_Port, MOTOR_EN_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(XSHUT8_GPIO_Port, XSHUT8_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, XSHUT7_Pin|MOTOR_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(CTRL_LEDS_GPIO_Port, CTRL_LEDS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PE2 PE4 PE5 PE7
-                           PE8 PE12 PE0 PE1 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_7
-                          |GPIO_PIN_8|GPIO_PIN_12|GPIO_PIN_0|GPIO_PIN_1;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  /*Configure GPIO pins : XSHUT5_Pin XSHUT1_Pin XSHUT9_Pin */
+  GPIO_InitStruct.Pin = XSHUT5_Pin|XSHUT1_Pin|XSHUT9_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : XSHUT3_Pin XSHUT1_Pin XSHUT2_Pin */
-  GPIO_InitStruct.Pin = XSHUT3_Pin|XSHUT1_Pin|XSHUT2_Pin;
+  /*Configure GPIO pins : XSHUT3_Pin XSHUT4_Pin XSHUT2_Pin */
+  GPIO_InitStruct.Pin = XSHUT3_Pin|XSHUT4_Pin|XSHUT2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : PE4 PE5 PE7 PE12
+                           PE1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_7|GPIO_PIN_12
+                          |GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
   /*Configure GPIO pin : SW1_Pin */
   GPIO_InitStruct.Pin = SW1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(SW1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED0_Pin LED1_Pin LED2_Pin */
@@ -1664,28 +1548,24 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PC0 PC1 PC2 PC3
-                           PC6 PC7 PC10 PC11
-                           PC12 */
+                           PC10 PC11 PC12 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
-                          |GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_10|GPIO_PIN_11
-                          |GPIO_PIN_12;
+                          |GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA0 PA1 PA2 PA4
-                           PA5 PA6 PA7 PA8
-                           PA9 PA10 PA11 PA12
-                           PA15 */
+                           PA5 PA6 PA7 PA9
+                           PA10 PA11 PA12 PA15 */
 #ifdef COMPILING_FOR_MICROPYTHON
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_4
-                          |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8
-                          |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_15;
+                          |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_9
+                          |GPIO_PIN_10|GPIO_PIN_15;
 #else
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_4
-                          |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8
-                          |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12
-                          |GPIO_PIN_15;
+                          |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_9
+                          |GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_15;
 #endif
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -1699,30 +1579,35 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SW2_Pin */
-  GPIO_InitStruct.Pin = SW2_Pin;
+  /*Configure GPIO pins : SW2_Pin IMU_INT_Pin */
+  GPIO_InitStruct.Pin = SW2_Pin|IMU_INT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(SW2_GPIO_Port, &GPIO_InitStruct);
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PD8 PD9 PD10 PD11
-                           PD14 PD15 PD0 PD1
-                           PD2 PD3 PD4 PD5
-                           PD6 */
+                           PD0 PD1 PD2 PD4
+                           PD5 PD6 */
   GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
-                          |GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1
-                          |GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5
-                          |GPIO_PIN_6;
+                          |GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_4
+                          |GPIO_PIN_5|GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : MOTOR_EN_Pin */
-  GPIO_InitStruct.Pin = MOTOR_EN_Pin;
+  /*Configure GPIO pin : XSHUT8_Pin */
+  GPIO_InitStruct.Pin = XSHUT8_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(MOTOR_EN_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(XSHUT8_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : XSHUT7_Pin MOTOR_EN_Pin */
+  GPIO_InitStruct.Pin = XSHUT7_Pin|MOTOR_EN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pin : CTRL_LEDS_Pin */
   GPIO_InitStruct.Pin = CTRL_LEDS_Pin;
@@ -1731,14 +1616,33 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(CTRL_LEDS_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : MPU6050_INT_Pin */
-  GPIO_InitStruct.Pin = MPU6050_INT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(MPU6050_INT_GPIO_Port, &GPIO_InitStruct);
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /*Configure GPIO pin Output Level - MB ToF XSHUT pins */
+  HAL_GPIO_WritePin(XSHUT7_GPIO_Port, XSHUT7_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(XSHUT8_GPIO_Port, XSHUT8_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(XSHUT9_GPIO_Port, XSHUT9_Pin, GPIO_PIN_RESET);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /*Configure GPIO pin : XSHUT7_Pin (PD3 - MB Front ToF) */
+  GPIO_InitStruct.Pin = XSHUT7_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(XSHUT7_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : XSHUT8_Pin (PA8 - MB Front Left ToF) */
+  GPIO_InitStruct.Pin = XSHUT8_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(XSHUT8_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : XSHUT9_Pin (PE0 - MB Front Right ToF) */
+  GPIO_InitStruct.Pin = XSHUT9_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(XSHUT9_GPIO_Port, &GPIO_InitStruct);
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -1758,7 +1662,8 @@ void jesse_legacy_period_elapsed_callback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM6) {
+  if (htim->Instance == TIM6)
+  {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
@@ -1786,8 +1691,7 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 #endif
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

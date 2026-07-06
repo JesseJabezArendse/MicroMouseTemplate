@@ -20,8 +20,43 @@
 #include "stm32l4xx.h"
 #include "main.h"
 
-// LED array corresponding to PC13, PC14, PC15
-extern uint8_t LED[3];
+// LED pin/port defines
+#define LED0_Pin            GPIO_PIN_13
+#define LED0_GPIO_Port      GPIOC
+#define LED1_Pin            GPIO_PIN_14
+#define LED1_GPIO_Port      GPIOC
+#define LED2_Pin            GPIO_PIN_15
+#define LED2_GPIO_Port      GPIOC
+
+// IR LED pin/port defines
+#define LEFT_MOTOR_Pin      GPIO_PIN_9
+#define LEFT_MOTOR_GPIO_Port GPIOE
+#define RIGHT_MOTOR_Pin     GPIO_PIN_13
+#define RIGHT_MOTOR_GPIO_Port GPIOE
+#define DOWN_LEFT_Pin       GPIO_PIN_14
+#define DOWN_LEFT_GPIO_Port GPIOE
+#define DOWN_RIGHT_Pin      GPIO_PIN_11
+#define DOWN_RIGHT_GPIO_Port GPIOE
+
+// CTRL_LEDS pin defines
+#define CTRL_LEDS_Pin       GPIO_PIN_3
+#define CTRL_LEDS_GPIO_Port GPIOB
+
+// LED structure: each LED has port, pin, and state
+typedef struct {
+	GPIO_TypeDef *port;  // GPIO port (e.g., GPIOC)
+	uint16_t pin;        // GPIO pin (e.g., GPIO_PIN_13)
+	uint8_t state;       // LED state (0 = OFF, 1 = ON)
+} LED_t;
+
+// Individual LED control structures
+extern LED_t LED0;  // PC13
+extern LED_t LED1;  // PC14
+extern LED_t LED2;  // PC15
+extern LED_t IR_LED_LEFT_MOTOR;  // PE9
+extern LED_t IR_LED_RIGHT_MOTOR;  // PE13
+extern LED_t IR_LED_DOWN_LEFT;    // PE14
+extern LED_t IR_LED_DOWN_RIGHT;   // PE11
 
 // Function declarations
 void initLEDs();
