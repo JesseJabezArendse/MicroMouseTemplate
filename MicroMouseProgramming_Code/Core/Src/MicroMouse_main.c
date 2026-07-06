@@ -76,8 +76,10 @@ DMA_HandleTypeDef hdma_tim4_up;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
+#ifndef COMPILING_FOR_MICROPYTHON
 void SystemClock_Config(void);
-static void MX_NVIC_Init(void);
+#endif
+void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -891,6 +893,7 @@ void main(void)
   * @brief System Clock Configuration
   * @retval None
   */
+#ifndef COMPILING_FOR_MICROPYTHON
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -935,12 +938,13 @@ void SystemClock_Config(void)
     Error_Handler();
   }
 }
+#endif
 
 /**
   * @brief NVIC Configuration.
   * @retval None
   */
-static void MX_NVIC_Init(void)
+void MX_NVIC_Init(void)
 {
   /* FLASH_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(FLASH_IRQn, 0, 0);
@@ -1691,10 +1695,16 @@ void MX_GPIO_Init(void)
                            PA5 PA6 PA7 PA8
                            PA9 PA10 PA11 PA12
                            PA15 */
+#ifdef COMPILING_FOR_MICROPYTHON
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_4
+                          |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8
+                          |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_15;
+#else
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_4
                           |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8
                           |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12
                           |GPIO_PIN_15;
+#endif
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -1761,7 +1771,7 @@ void MX_GPIO_Init(void)
   * @param  htim : TIM handle
   * @retval None
   */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+void jesse_legacy_period_elapsed_callback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
 
@@ -1779,6 +1789,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   * @brief  This function is executed in case of error occurrence.
   * @retval None
   */
+#ifndef COMPILING_FOR_MICROPYTHON
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -1793,6 +1804,7 @@ void Error_Handler(void)
   
   /* USER CODE END Error_Handler_Debug */
 }
+#endif
 #ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
