@@ -135,6 +135,9 @@ uint8_t EXPECTED_MINUTES = 5;
 uint8_t STUDENT_NUMBER[9] = "ABCDEF123";  // 9 characters
 
 // Flash region detection structures (populated during initLogs)
+#ifdef FLASH_END
+#undef FLASH_END
+#endif
 #define FLASH_END 0x08080000
 #define FLASH_START 0x08000000
 #define PAGE_SIZE 2048
@@ -558,7 +561,10 @@ void refreshLoggedData() {
             log_flash_write_addr += USB_BUFFER_SIZE;
             
             // Update OLED with logging percentage: "LOGGING RUN : xxx%" (18 chars)
-            #define FLASH_END 0x08080000
+            #ifdef FLASH_END
+#undef FLASH_END
+#endif
+#define FLASH_END 0x08080000
             uint32_t flash_used = log_flash_write_addr - log_flash_start_addr;
             uint32_t flash_available = FLASH_END - log_flash_start_addr;
             uint8_t percentage = (uint8_t)((flash_used * 100) / flash_available);

@@ -155,6 +155,9 @@ uint8_t EXPECTED_MINUTES = 5;
 uint8_t STUDENT_NUMBER[9] = "ABCDEF123";  // 9 characters
 
 // Flash region detection structures (populated during initLogs)
+#ifdef FLASH_END
+#undef FLASH_END
+#endif
 #define FLASH_END 0x08080000
 #define FLASH_START 0x08000000
 #define PAGE_SIZE 2048
@@ -682,7 +685,10 @@ void refreshLoggedData() {
             log_flash_write_addr += USB_BUFFER_SIZE;
             
             // Update OLED with logging percentage: "LOGGING RUN : xxx%" (18 chars)
-            #define FLASH_END 0x08080000
+            #ifdef FLASH_END
+#undef FLASH_END
+#endif
+#define FLASH_END 0x08080000
             uint32_t flash_used = log_flash_write_addr - log_flash_start_addr;
             uint32_t flash_available = FLASH_END - log_flash_start_addr;
             uint8_t percentage = (uint8_t)((flash_used * 100) / flash_available);
@@ -760,6 +766,9 @@ void initMicroMouse(){
   TIM4->CCR2 = 0;
   TIM4->CCR1 = 0;
 
+  // Initialize display first to clear random power-up noise immediately
+  initScreen();
+
   initTOFs(1);
 
   // Scan both I2C buses for devices
@@ -768,7 +777,6 @@ void initMicroMouse(){
   uint8_t num1 = I2C_Scan(&hi2c1, found1, 1);
   uint8_t num2 = I2C_Scan(&hi2c2, found2, 5);
 
-  initScreen();
   initINA219();
   initIMU();
   initADCs();

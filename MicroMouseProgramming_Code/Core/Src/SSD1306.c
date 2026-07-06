@@ -1025,6 +1025,7 @@ void refreshScreen() {
 #ifdef SCREEN_FONT_DYNAMIC
     uint16_t y_position = 0; // Start at the top of the screen
     uint16_t max_width = SSD1306_WIDTH; // Maximum width of the screen
+    (void)max_width;
     uint16_t max_height = SSD1306_HEIGHT; // Maximum height of the screen
     uint16_t remaining_height = max_height; // Remaining height for dynamic font sizes
 
