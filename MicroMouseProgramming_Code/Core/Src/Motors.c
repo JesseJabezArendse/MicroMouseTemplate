@@ -153,6 +153,8 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
     if (htim->Instance != TIM4) return;
 
     uint32_t now_ms = HAL_GetTick();
+    extern volatile int32_t leftEncoderCount;
+    extern volatile int32_t rightEncoderCount;
 
     if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
     {
@@ -166,6 +168,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
             int32_t rate_x100 = (int32_t)(((60000000LL * RPM_SCALE)) / ((int64_t)ENC_TICKS_PER_REV * (int64_t)delta_us));
             int8_t  dir  = HAL_GPIO_ReadPin(MOTORR_B_ENC_GPIO_Port, MOTORR_B_ENC_Pin) ? -1 : 1;  // inverted: motor mounted opposing
             MOTOR_R.encoderRate = clamp_to_i16((int32_t)dir * rate_x100);
+            rightEncoderCount += dir;
         }
     }
     else if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3)
@@ -180,6 +183,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
             int32_t rate_x100 = (int32_t)(((60000000LL * RPM_SCALE)) / ((int64_t)ENC_TICKS_PER_REV * (int64_t)delta_us));
             int8_t  dir  = HAL_GPIO_ReadPin(MOTORL_B_ENC_GPIO_Port, MOTORL_B_ENC_Pin) ? 1 : -1;
             MOTOR_L.encoderRate = clamp_to_i16((int32_t)dir * rate_x100);
+            leftEncoderCount += dir;
         }
     }
 }
