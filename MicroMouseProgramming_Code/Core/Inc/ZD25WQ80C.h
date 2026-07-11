@@ -13,6 +13,7 @@
 
 #include <stdint.h>
 #include "stm32l4xx_hal.h"
+#include "main.h"  /* FLASH_CS_Pin / FLASH_CS_GPIO_Port */
 
 extern SPI_HandleTypeDef hspi2;
 #define ZD25WQ80C_SPI_BUS       (&hspi2)

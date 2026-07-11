@@ -27,13 +27,13 @@
         {
             "name": "Micromouse - Diagnostics",
             "displayName": "Micromouse Diagnostics",
-            "description": "Configure for Micromouse with diagnostic features enabled",
+            "description": "Standalone image that brings up every peripheral bus one at a time, probes whatever hardware should be behind it (INA219, IMU, SSD1306, 9x VL53L0X, ZD25WQ80C), and reports PASS/FAIL per item over USART1. Never drives motors or touches internal flash.",
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/arm-toolchain.cmake",
                 "TARGET_DEVICE": "STM32L476xx",
-                "ENABLE_DIAGNOSTICS": "ON"
+                "DIAGNOSTICS_BUILD": "ON"
             }
         },
         {
@@ -46,17 +46,51 @@
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}"
             }
+        },
+        {
+            "name": "External Flash Dumper",
+            "displayName": "External Flash Dumper",
+            "description": "Standalone image that brings up SPI2 + the ZD25WQ80C external flash and streams its contents over USART1 (read-only)",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/arm-toolchain.cmake",
+                "TARGET_DEVICE": "STM32L476xx",
+                "FLASH_DUMPER_BUILD": "ON"
+            }
+        },
+        {
+            "name": "External Flash Writer",
+            "displayName": "External Flash Writer",
+            "description": "Standalone image that mass-erases the ZD25WQ80C external flash, then writes FLASH_WRITE_STRING (edit in FlashWriter_main.c) to address 0 and verifies it over USART1",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/arm-toolchain.cmake",
+                "TARGET_DEVICE": "STM32L476xx",
+                "FLASH_WRITER_BUILD": "ON"
+            }
         }
     ],
     "buildPresets": [
         {
-            "name": "Micromouse - Template",
-            "configurePreset": "Micromouse - Template",
+            "name": "MicroMouse - C Template",
+            "configurePreset": "MicroMouse - C Template",
             "jobs": 4
         },
         {
-            "name": "Micromouse - Diagnostics",
-            "configurePreset": "Micromouse - Diagnostics",
+            "name": "MicroMouse - Diagnostics",
+            "configurePreset": "MicroMouse - Diagnostics",
+            "jobs": 4
+        },
+        {
+            "name": "External Flash Dumper",
+            "configurePreset": "External Flash Dumper",
+            "jobs": 4
+        },
+        {
+            "name": "External Flash Writer",
+            "configurePreset": "External Flash Writer",
             "jobs": 4
         }
     ]
