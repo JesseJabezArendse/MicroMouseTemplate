@@ -81,82 +81,112 @@ extern DMA_HandleTypeDef hdma_usart1_rx;
 /**
   * @brief This function handles Non maskable interrupt.
   */
-void NMI_Handler(void)
+__attribute__((naked)) void NMI_Handler(void)
 {
-  /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
+  __asm volatile (
+      "tst lr, #4\n"
+      "ite eq\n"
+      "mrseq r0, msp\n"
+      "mrsne r0, psp\n"
+      "b prf_fault\n"
+  );
+}
 
-  /* USER CODE END NonMaskableInt_IRQn 0 */
-  HAL_RCC_NMI_IRQHandler();
-  /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
-   while (1)
-  {
-  }
-  /* USER CODE END NonMaskableInt_IRQn 1 */
+static void prf(const char *s) {
+    while (*s) {
+        while (!(USART1->ISR & USART_ISR_TXE));
+        USART1->TDR = *s++;
+    }
+}
+
+static void prf_hex(uint32_t val) {
+    char buf[16];
+    int i = 0;
+    buf[i++] = '0';
+    buf[i++] = 'x';
+    for (int d = 28; d >= 0; d -= 4) {
+        uint8_t nibble = (val >> d) & 0xF;
+        buf[i++] = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
+    }
+    buf[i++] = '\r';
+    buf[i++] = '\n';
+    buf[i++] = '\0';
+    prf(buf);
+}
+
+void prf_fault(uint32_t *stack) {
+    __disable_irq();
+    prf("\r\n!!! FAULT DETECTED !!!\r\n");
+    prf("R0:  "); prf_hex(stack[0]);
+    prf("R1:  "); prf_hex(stack[1]);
+    prf("R2:  "); prf_hex(stack[2]);
+    prf("R3:  "); prf_hex(stack[3]);
+    prf("R12: "); prf_hex(stack[4]);
+    prf("LR:  "); prf_hex(stack[5]);
+    prf("PC:  "); prf_hex(stack[6]);
+    prf("PSR: "); prf_hex(stack[7]);
+    
+    prf("HFSR: "); prf_hex(SCB->HFSR);
+    prf("CFSR: "); prf_hex(SCB->CFSR);
+    prf("MMFAR:"); prf_hex(SCB->MMFAR);
+    prf("BFAR: "); prf_hex(SCB->BFAR);
+    while (1);
 }
 
 /**
   * @brief This function handles Hard fault interrupt.
   */
-void HardFault_Handler(void)
+__attribute__((naked)) void HardFault_Handler(void)
 {
-  /* USER CODE BEGIN HardFault_IRQn 0 */
-  // __disable_irq();
-  // initMicroMouse();
-  // __enable_irq();
-  /* USER CODE END HardFault_IRQn 0 */
-  while (1)
-  {
-    /* USER CODE BEGIN W1_HardFault_IRQn 0 */
-    break;
-    /* USER CODE END W1_HardFault_IRQn 0 */
-  }
+  __asm volatile (
+      "tst lr, #4\n"
+      "ite eq\n"
+      "mrseq r0, msp\n"
+      "mrsne r0, psp\n"
+      "b prf_fault\n"
+  );
 }
 
 /**
   * @brief This function handles Memory management fault.
   */
-void MemManage_Handler(void)
+__attribute__((naked)) void MemManage_Handler(void)
 {
-  /* USER CODE BEGIN MemoryManagement_IRQn 0 */
-
-  /* USER CODE END MemoryManagement_IRQn 0 */
-  while (1)
-  {
-    /* USER CODE BEGIN W1_MemoryManagement_IRQn 0 */
-    break;
-    /* USER CODE END W1_MemoryManagement_IRQn 0 */
-  }
+  __asm volatile (
+      "tst lr, #4\n"
+      "ite eq\n"
+      "mrseq r0, msp\n"
+      "mrsne r0, psp\n"
+      "b prf_fault\n"
+  );
 }
 
 /**
   * @brief This function handles Prefetch fault, memory access fault.
   */
-void BusFault_Handler(void)
+__attribute__((naked)) void BusFault_Handler(void)
 {
-  /* USER CODE BEGIN BusFault_IRQn 0 */
-
-  /* USER CODE END BusFault_IRQn 0 */
-  while (1)
-  {
-    /* USER CODE BEGIN W1_BusFault_IRQn 0 */
-     break;
-    /* USER CODE END W1_BusFault_IRQn 0 */
-  }
+  __asm volatile (
+      "tst lr, #4\n"
+      "ite eq\n"
+      "mrseq r0, msp\n"
+      "mrsne r0, psp\n"
+      "b prf_fault\n"
+  );
 }
 
 /**
   * @brief This function handles Undefined instruction or illegal state.
   */
-void UsageFault_Handler(void)
+__attribute__((naked)) void UsageFault_Handler(void)
 {
-  /* USER CODE BEGIN UsageFault_IRQn 0 */
-
-  /* USER CODE END UsageFault_IRQn 0 */
-  while (1)
-  {
-    /* USER CODE BEGIN W1_UsageFault_IRQn 0 */
-    /* USER CODE END W1_UsageFault_IRQn 0 */
-  }
+  __asm volatile (
+      "tst lr, #4\n"
+      "ite eq\n"
+      "mrseq r0, msp\n"
+      "mrsne r0, psp\n"
+      "b prf_fault\n"
+  );
 }
 
 /**
@@ -349,5 +379,44 @@ void DMA2_Channel7_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+void EXTI9_5_IRQHandler(void)
+{
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_5);
+}
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if (GPIO_Pin == GPIO_PIN_5) {
+    // Clear and ignore the IMU interrupt pin state changes safely
+  }
+}
+
+void EXTI0_IRQHandler(void) {
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_0);
+}
+
+void EXTI1_IRQHandler(void) {
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_1);
+}
+
+void EXTI2_IRQHandler(void) {
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_2);
+}
+
+void EXTI3_IRQHandler(void) {
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_3);
+}
+
+void EXTI4_IRQHandler(void) {
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_4);
+}
+
+void EXTI15_10_IRQHandler(void) {
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_10);
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_11);
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_12);
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_13);
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_14);
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_15);
+}
 /* USER CODE END 1 */

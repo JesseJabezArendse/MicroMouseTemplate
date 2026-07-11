@@ -207,14 +207,8 @@ uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAd
 }
 
 void restartI2C(I2C_HandleTypeDef *hi2c){
-  #ifdef I2C_SAFE_RESTART
-    TIM3->CCR4 = 0;
-    TIM3->CCR3 = 0;
-    TIM4->CCR2 = 0;
-    TIM4->CCR1 = 0;
-  #endif
-  HAL_I2C_DeInit(hi2c);
-  HAL_I2C_Init(hi2c);
+  hi2c->State = HAL_I2C_STATE_READY;
+  hi2c->ErrorCode = HAL_I2C_ERROR_NONE;
 }
 // Logging
 
@@ -829,10 +823,10 @@ void SystemClock_Config(void)
   HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
   /* TIM4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM4_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(TIM4_IRQn);
+  // HAL_NVIC_EnableIRQ(TIM4_IRQn); // Disabled to prevent touch interrupt storms
   /* TIM5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM5_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(TIM5_IRQn);
+  // HAL_NVIC_EnableIRQ(TIM5_IRQn); // Disabled to prevent unused interrupt storms
   /* DMA2_Channel6_IRQn interrupt configuration */
   NVIC_SetPriority(DMA2_Channel6_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
   NVIC_EnableIRQ(DMA2_Channel6_IRQn);
@@ -841,7 +835,7 @@ void SystemClock_Config(void)
   NVIC_EnableIRQ(DMA2_Channel7_IRQn);
   /* TIM7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(TIM7_IRQn);
+  // HAL_NVIC_EnableIRQ(TIM7_IRQn); // Disabled to prevent unused interrupt storms
   /* DMA2_Channel3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel3_IRQn);

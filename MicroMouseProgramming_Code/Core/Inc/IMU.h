@@ -47,7 +47,7 @@ typedef enum {
 // CONFIGURATION
 //====================================================================
 #ifndef COMPILED_BY_SIMULINK
-#define IMU_DYNAMIC_FSR  // Enable dynamic full-scale range adjustment
+// #define IMU_DYNAMIC_FSR  // Enable dynamic full-scale range adjustment
 #endif
 
 //====================================================================
