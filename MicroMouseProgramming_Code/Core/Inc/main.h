@@ -69,6 +69,7 @@ void MX_GPIO_Init(void);
 void MX_DMA_Init(void);
 void MX_I2C1_Init(void);
 void MX_I2C2_Init(void);
+void MX_SPI2_Init(void);
 void MX_ADC1_Init(void);
 void MX_TIM1_Init(void);
 void MX_TIM3_Init(void);
@@ -153,6 +154,8 @@ void restartI2C(I2C_HandleTypeDef *hi2c);
 #define CTRL_LEDS_GPIO_Port GPIOB
 #define IMU_INT_Pin GPIO_PIN_5
 #define IMU_INT_GPIO_Port GPIOB
+#define FLASH_CS_Pin GPIO_PIN_12
+#define FLASH_CS_GPIO_Port GPIOB
 #define XSHUT9_Pin GPIO_PIN_0
 #define XSHUT9_GPIO_Port GPIOE
 

@@ -14,8 +14,8 @@
 #include <stdint.h>
 #include "stm32l4xx_hal.h"
 
-extern SPI_HandleTypeDef hspi1;
-#define ZD25WQ80C_SPI_BUS       (&hspi1)
+extern SPI_HandleTypeDef hspi2;
+#define ZD25WQ80C_SPI_BUS       (&hspi2)
 #define ZD25WQ80C_CS_PIN        (FLASH_CS_Pin)
 #define ZD25WQ80C_CS_PORT       (FLASH_CS_GPIO_Port)
 
