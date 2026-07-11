@@ -22,3 +22,6 @@ MicroMouseProgramming_Code/build/
 MicroMouseProgramming_Code/build/debug/MicroMouseProgramming.bin
 MicroMouseProgramming_Code/build/release/MicroMouseProgramming.bin
 MicroMouseProgramming_Code/Toolchains/
+
+# ZD25WQ80C datasheet PDF (large binary, not tracked)
+MicroMouseTemplate_Code/Core/Src/ZD25WQ80C/*.pdf
