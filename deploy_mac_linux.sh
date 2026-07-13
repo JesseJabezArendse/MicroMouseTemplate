@@ -25,8 +25,21 @@ if [ -z "$BIN_FILE" ]; then
     exit 1
 fi
 
-# 2. Find the ST-Link Mass Storage Drive
-echo "[2/3] Searching for ST-Link Drive..."
+# 2. Flash the binary safely
+echo "[2/3] Flashing $BIN_FILE..."
+if command -v st-flash &> /dev/null; then
+    echo "st-flash utility found. Programming via ST-Link programmer..."
+    st-flash write "$BIN_FILE" 0x08000000
+    if [ $? -eq 0 ]; then
+        echo "Success! The mouse will reboot momentarily."
+        exit 0
+    else
+        echo "Warning: st-flash failed. Falling back to mass storage method..."
+    fi
+fi
+
+# Fallback: Find the ST-Link Mass Storage Drive
+echo "Searching for ST-Link Mass Storage Drive..."
 if [ "$(uname)" == "Darwin" ]; then
     STLINK=$(ls -d /Volumes/*STLINK* /Volumes/NOD* 2>/dev/null | head -n 1)
 else
@@ -34,12 +47,10 @@ else
 fi
 
 if [ -z "$STLINK" ]; then
-    echo "Error: ST-Link drive not found. Is the mouse plugged in?"
+    echo "Error: ST-Link programmer/drive not found. Is the mouse plugged in?"
     exit 1
 fi
 
-# 3. Flash the binary safely (stripping Mac metadata)
-echo "[3/3] Flashing $BIN_FILE to $STLINK..."
 # Using 'cat' bypasses the macOS filesystem metadata manager entirely!
 cat "$BIN_FILE" > "$STLINK/firmware.bin"
 echo "Success! The mouse will reboot momentarily."

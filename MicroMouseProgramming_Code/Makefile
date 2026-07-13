@@ -58,6 +58,8 @@ Core/Src/system_stm32l4xx.c \
 Core/Src/stm32l4xx_hal_timebase_tim.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c_ex.c \
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_spi.c \
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_spi_ex.c \
 Core/Src/sysmem.c \
 Core/Src/syscalls.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.c \
@@ -73,7 +75,8 @@ Core/Src/Motors.c \
 Core/Src/SSD1306.c \
 Core/Src/VL53L0X.c \
 Core/Src/preformatted_flash.c \
-Core/Src/to_compile_flash.c
+Core/Src/DMA.c \
+Core/Src/ZD25WQ80C.c
 
 # ASM sources
 ASM_SOURCES =  \
@@ -122,6 +125,7 @@ AS_DEFS =
 # C defines
 C_DEFS =  \
 -DUSE_HAL_DRIVER \
+-DUSE_FULL_LL_DRIVER \
 -DSTM32L476xx
 
 
@@ -171,8 +175,10 @@ MATLAB_DIR = $(firstword $(wildcard /Applications/MATLAB_R*.app /usr/local/MATLA
 ifneq ($(wildcard ../MicroMouse_Deploy_ert_rtw),)
 C_SOURCES += \
 ../MicroMouse_Deploy_ert_rtw/MicroMouse_Deploy.c \
-../MicroMouse_Deploy_ert_rtw/MicroMouse_Deploy_data.c \
-../MicroMouse_Deploy_ert_rtw/rt_nonfinite.c
+../MicroMouse_Deploy_ert_rtw/MicroMouse_Deploy_data.c
+ifneq ($(wildcard ../MicroMouse_Deploy_ert_rtw/rt_nonfinite.c),)
+C_SOURCES += ../MicroMouse_Deploy_ert_rtw/rt_nonfinite.c
+endif
 C_INCLUDES += -I../MicroMouse_Deploy_ert_rtw -I.. -IDrivers/CMSIS/DSP/Include
 ifneq ($(MATLAB_DIR),)
 C_INCLUDES += -I$(MATLAB_DIR)/simulink/include
@@ -185,8 +191,10 @@ endif
 ifneq ($(wildcard ../StudentTemplate_ert_rtw),)
 C_SOURCES += \
 ../StudentTemplate_ert_rtw/StudentTemplate.c \
-../StudentTemplate_ert_rtw/StudentTemplate_data.c \
-../StudentTemplate_ert_rtw/rt_nonfinite.c
+../StudentTemplate_ert_rtw/StudentTemplate_data.c
+ifneq ($(wildcard ../StudentTemplate_ert_rtw/rt_nonfinite.c),)
+C_SOURCES += ../StudentTemplate_ert_rtw/rt_nonfinite.c
+endif
 C_INCLUDES += -I../StudentTemplate_ert_rtw -I.. -IDrivers/CMSIS/DSP/Include
 ifneq ($(MATLAB_DIR),)
 C_INCLUDES += -I$(MATLAB_DIR)/simulink/include

@@ -35,6 +35,13 @@
 #include "Buttons.h"
 #include "INA219.h"
 #include "preformatted_flash.h"
+#ifdef COMPILED_BY_SIMULINK
+  #ifdef RUN_STUDENT_TEMPLATE
+    #include "StudentTemplate.h"
+  #else
+    #include "MicroMouse_Deploy.h"
+  #endif
+#endif
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -84,6 +91,8 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 int32_t counter = 0;
+volatile int32_t leftEncoderCount = 0;
+volatile int32_t rightEncoderCount = 0;
 
 // ADCs
 extern uint16_t ADCs[5];
@@ -700,6 +709,10 @@ void updateMicroMouse(){
   refreshLoggedData();
 }
 
+#endif /* COMPILED_BY_SIMULINK */
+
+#define STARTUP_HOLD_MS 5000
+
 void main(void)
 {
   // Initialize the HAL Library; it must be the first function to be executed
@@ -722,9 +735,15 @@ void main(void)
   MX_TIM7_Init();
   MX_NVIC_Init();
 
-
+#ifdef COMPILED_BY_SIMULINK
+  #ifdef RUN_STUDENT_TEMPLATE
+    StudentTemplate_initialize();
+  #else
+    MicroMouse_Deploy_initialize();
+  #endif
+#else
   initMicroMouse();
-  
+#endif
 
   // Configure timers for desired frequencies
   configureTimer(100, TIM5); // Example: configure TIM1 for a frequency of 1000 Hz
@@ -740,13 +759,26 @@ void main(void)
     #endif
     
     // Main loop code here
+#ifdef COMPILED_BY_SIMULINK
+    static uint32_t last_control_tick = 0;
+    if (HAL_GetTick() - last_control_tick >= 10) { // 100Hz (10ms)
+        last_control_tick = HAL_GetTick();
+        if (HAL_GetTick() > STARTUP_HOLD_MS) {
+            #ifdef RUN_STUDENT_TEMPLATE
+              StudentTemplate_step();
+            #else
+              MicroMouse_Deploy_step();
+            #endif
+        }
+    }
+#else
     updateMicroMouse();
+#endif
     // sendToSimulink();
     // HAL_Delay(100);
     // counter++;
   }
 }
-#endif /* COMPILED_BY_SIMULINK */
 /* USER CODE END 0 */
 
 /**
@@ -774,12 +806,13 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 1;
-  RCC_OscInitStruct.PLL.PLLN = 20;
+  RCC_OscInitStruct.PLL.PLLN = 10;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
   RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV4;
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
@@ -801,10 +834,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-
-  /** Enables the Clock Security System
-  */
-  HAL_RCC_EnableCSS();
 }
 #endif
 

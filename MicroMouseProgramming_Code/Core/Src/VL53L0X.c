@@ -489,6 +489,12 @@ void getVL53L0(VL53L0_t* TOF_result){
   distanceStr.rangeStatus = 255;
   uint16_t distance = readRangeContinuousMillimeters(&distanceStr);
 
+  if (i2cStat != HAL_OK) {
+    TOF_result->Distance = 8190;
+    TOF_result->Status = 255;
+    return;
+  }
+
   // If a timeout occurred (no new sample ready yet), keep the last cached value
   if (distance == 65535) {
     return;
@@ -570,15 +576,15 @@ void refreshTOFValues() {
 }
 
 void initTOFs(uint16_t signalRate){
-  TOF_sb_left_result.Address = newToFAddress_L;         TOF_sb_left_result.I2Cx = &hi2c2;        TOF_sb_left_result.XSHUT_Port = XSHUT1_GPIO_Port; TOF_sb_left_result.XSHUT_Pin = XSHUT1_Pin;
-  TOF_sb_front_left_result.Address = newToFAddress_FL;  TOF_sb_front_left_result.I2Cx = &hi2c2;  TOF_sb_front_left_result.XSHUT_Port = XSHUT4_GPIO_Port; TOF_sb_front_left_result.XSHUT_Pin = XSHUT4_Pin;
-  TOF_sb_front_result.Address = newToFAddress_C;       TOF_sb_front_result.I2Cx = &hi2c2;       TOF_sb_front_result.XSHUT_Port = XSHUT2_GPIO_Port; TOF_sb_front_result.XSHUT_Pin = XSHUT2_Pin;
-  TOF_sb_front_right_result.Address = newToFAddress_FR; TOF_sb_front_right_result.I2Cx = &hi2c2;  TOF_sb_front_right_result.XSHUT_Port = XSHUT5_GPIO_Port; TOF_sb_front_right_result.XSHUT_Pin = XSHUT5_Pin;
-  TOF_sb_right_result.Address = newToFAddress_R;        TOF_sb_right_result.I2Cx = &hi2c2;        TOF_sb_right_result.XSHUT_Port = XSHUT3_GPIO_Port; TOF_sb_right_result.XSHUT_Pin = XSHUT3_Pin;
-  TOF_mb_back_result.Address = newToFAddress_B;         TOF_mb_back_result.I2Cx = &hi2c1;         TOF_mb_back_result.XSHUT_Port = XSHUT6_GPIO_Port; TOF_mb_back_result.XSHUT_Pin = XSHUT6_Pin;
-  TOF_mb_front_result.Address = newToFAddress_MB_F;      TOF_mb_front_result.I2Cx = &hi2c2;         TOF_mb_front_result.XSHUT_Port = XSHUT7_GPIO_Port; TOF_mb_front_result.XSHUT_Pin = XSHUT7_Pin;
-  TOF_mb_front_left_result.Address = newToFAddress_MB_FL; TOF_mb_front_left_result.I2Cx = &hi2c2;   TOF_mb_front_left_result.XSHUT_Port = XSHUT8_GPIO_Port; TOF_mb_front_left_result.XSHUT_Pin = XSHUT8_Pin;
-  TOF_mb_front_right_result.Address = newToFAddress_MB_FR; TOF_mb_front_right_result.I2Cx = &hi2c2; TOF_mb_front_right_result.XSHUT_Port = XSHUT9_GPIO_Port; TOF_mb_front_right_result.XSHUT_Pin = XSHUT9_Pin;
+  TOF_sb_left_result.Address = newToFAddress_L;         TOF_sb_left_result.I2Cx = &hi2c2;        TOF_sb_left_result.XSHUT_Port = XSHUT1_GPIO_Port; TOF_sb_left_result.XSHUT_Pin = XSHUT1_Pin; TOF_sb_left_result.Distance = 8190;
+  TOF_sb_front_left_result.Address = newToFAddress_FL;  TOF_sb_front_left_result.I2Cx = &hi2c2;  TOF_sb_front_left_result.XSHUT_Port = XSHUT4_GPIO_Port; TOF_sb_front_left_result.XSHUT_Pin = XSHUT4_Pin; TOF_sb_front_left_result.Distance = 8190;
+  TOF_sb_front_result.Address = newToFAddress_C;       TOF_sb_front_result.I2Cx = &hi2c2;       TOF_sb_front_result.XSHUT_Port = XSHUT2_GPIO_Port; TOF_sb_front_result.XSHUT_Pin = XSHUT2_Pin; TOF_sb_front_result.Distance = 8190;
+  TOF_sb_front_right_result.Address = newToFAddress_FR; TOF_sb_front_right_result.I2Cx = &hi2c2;  TOF_sb_front_right_result.XSHUT_Port = XSHUT5_GPIO_Port; TOF_sb_front_right_result.XSHUT_Pin = XSHUT5_Pin; TOF_sb_front_right_result.Distance = 8190;
+  TOF_sb_right_result.Address = newToFAddress_R;        TOF_sb_right_result.I2Cx = &hi2c2;        TOF_sb_right_result.XSHUT_Port = XSHUT3_GPIO_Port; TOF_sb_right_result.XSHUT_Pin = XSHUT3_Pin; TOF_sb_right_result.Distance = 8190;
+  TOF_mb_back_result.Address = newToFAddress_B;         TOF_mb_back_result.I2Cx = &hi2c1;         TOF_mb_back_result.XSHUT_Port = XSHUT6_GPIO_Port; TOF_mb_back_result.XSHUT_Pin = XSHUT6_Pin; TOF_mb_back_result.Distance = 8190;
+  TOF_mb_front_result.Address = newToFAddress_MB_F;      TOF_mb_front_result.I2Cx = &hi2c2;         TOF_mb_front_result.XSHUT_Port = XSHUT7_GPIO_Port; TOF_mb_front_result.XSHUT_Pin = XSHUT7_Pin; TOF_mb_front_result.Distance = 8190;
+  TOF_mb_front_left_result.Address = newToFAddress_MB_FL; TOF_mb_front_left_result.I2Cx = &hi2c2;   TOF_mb_front_left_result.XSHUT_Port = XSHUT8_GPIO_Port; TOF_mb_front_left_result.XSHUT_Pin = XSHUT8_Pin; TOF_mb_front_left_result.Distance = 8190;
+  TOF_mb_front_right_result.Address = newToFAddress_MB_FR; TOF_mb_front_right_result.I2Cx = &hi2c2; TOF_mb_front_right_result.XSHUT_Port = XSHUT9_GPIO_Port; TOF_mb_front_right_result.XSHUT_Pin = XSHUT9_Pin; TOF_mb_front_right_result.Distance = 8190;
 
   // Configure XSHUT GPIO pins before reset
   GPIO_InitTypeDef GPIO_InitStruct = {0};

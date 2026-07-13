@@ -77,6 +77,7 @@ void MX_TIM4_Init(void);
 void MX_TIM5_Init(void);
 void MX_TIM7_Init(void);
 void MX_USART1_UART_Init(void);
+void MX_NVIC_Init(void);
 
 /* USER CODE BEGIN EFP */
 void initMicroMouse(void);

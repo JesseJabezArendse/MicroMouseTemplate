@@ -408,17 +408,32 @@ uint8_t SSD1306_Init(void) {
 	/* Init I2C */
 	SSD1306_I2C_Init();
 	
-	/* Check if LCD connected to I2C */
-	if (HAL_I2C_IsDeviceReady(SSD1306_I2C, SSD1306_I2C_ADDR, 1, I2C_TIMEOUT) != HAL_OK) {
+	/* Check if LCD connected to I2C (with retries to handle power-up timing) */
+	int retries = 5;
+	HAL_StatusTypeDef status = HAL_ERROR;
+	while (retries > 0) {
+		status = HAL_I2C_IsDeviceReady(SSD1306_I2C, SSD1306_I2C_ADDR, 1, I2C_TIMEOUT);
+		if (status == HAL_OK) {
+			break;
+		}
+		HAL_Delay(20);
+		retries--;
+	}
+	if (status != HAL_OK) {
 		/* Return false */
 		SSD1306_Data.Initialized = false;
+		extern UART_HandleTypeDef huart1;
+		char err[] = "SSD1306 Init FAILED: Device not ready\r\n";
+		HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 100);
 		return 0;
+	} else {
+		extern UART_HandleTypeDef huart1;
+		char msg[] = "SSD1306 Init SUCCESS\r\n";
+		HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 100);
 	}
 	
 	/* A little delay */
-	uint32_t p = 2500;
-	while(p>0)
-		p--;
+	HAL_Delay(10);
 	
 	/* Init LCD */
 	SSD1306_WRITECOMMAND(0xAE); //display off
@@ -989,9 +1004,7 @@ void SSD1306_OFF(void) {
 
 void SSD1306_I2C_Init() {
 	//MX_I2C1_Init();
-	uint32_t p = 250000;
-	while(p>0)
-		p--;
+	HAL_Delay(50);
 	//HAL_I2C_DeInit(&hi2c2);
 	//p = 250000;
 	//while(p>0)
