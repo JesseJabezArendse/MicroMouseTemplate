@@ -10,6 +10,26 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(TARGET_NAME MicroMouseProgramming)
 set(BUILD_DIR ${CMAKE_BINARY_DIR})
 
+# Build a standalone image (FlashDumper_main.c / FlashWriter_main.c /
+# Diagnostics_main.c) instead of the full MicroMouse robot firmware
+# (MicroMouse_main.c). See the "Flash Dumper" / "Flash Writer" /
+# "Micromouse - Diagnostics" CMake presets.
+option(FLASH_DUMPER_BUILD "Build the standalone ZD25WQ80C flash dumper (read-only) image" OFF)
+option(FLASH_WRITER_BUILD "Build the standalone ZD25WQ80C flash writer (mass-erase + write) image" OFF)
+option(DIAGNOSTICS_BUILD "Build the standalone hardware diagnostics image" OFF)
+
+if((FLASH_DUMPER_BUILD AND FLASH_WRITER_BUILD) OR (FLASH_DUMPER_BUILD AND DIAGNOSTICS_BUILD) OR (FLASH_WRITER_BUILD AND DIAGNOSTICS_BUILD))
+    message(FATAL_ERROR "FLASH_DUMPER_BUILD, FLASH_WRITER_BUILD and DIAGNOSTICS_BUILD are mutually exclusive")
+endif()
+
+if(FLASH_DUMPER_BUILD)
+    set(TARGET_NAME FlashDumper)
+elseif(FLASH_WRITER_BUILD)
+    set(TARGET_NAME FlashWriter)
+elseif(DIAGNOSTICS_BUILD)
+    set(TARGET_NAME Diagnostics)
+endif()
+
 # Debug configuration
 set(DEBUG 1)
 set(OPT -Og)
@@ -27,48 +47,125 @@ set(MCU_FLAGS "${CPU_FLAGS} ${THUMB_FLAGS} ${FPU_FLAGS} ${FLOAT_ABI_FLAGS}")
 # ============================================
 # C Sources
 # ============================================
-set(C_SOURCES
-    Core/Src/MicroMouse_main.c
-    Core/Src/stm32l4xx_it.c
-    Core/Src/stm32l4xx_hal_msp.c
-    Core/Src/system_stm32l4xx.c
-    Core/Src/stm32l4xx_hal_timebase_tim.c
-    Core/Src/ADCs.c
-    Core/Src/Buttons.c
-    Core/Src/IMU.c
-    Core/Src/INA219.c
-    Core/Src/LEDs.c
-    Core/Src/Motors.c
-    Core/Src/preformatted_flash.c
-    Core/Src/SSD1306.c
-    Core/Src/VL53L0X.c
-    Core/Src/DMA.c
-    Core/Src/VCP.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ex.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ramfunc.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_gpio.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma_ex.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr_ex.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_cortex.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_exti.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c_ex.c    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_usart.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_gpio.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_rcc.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_dma.c    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc.c
-    Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc_ex.c
-)
+if(DIAGNOSTICS_BUILD)
+    # Standalone image: brings up every bus (ADC1, I2C1, I2C2, TIM1/3/4/5/7,
+    # SPI2, USART1) one at a time and probes whatever device should be behind
+    # it (INA219, IMU, SSD1306, 9x VL53L0X, ZD25WQ80C, motors+encoders),
+    # reporting PASS/FAIL per item over UART. Pressing SW1/SW2 afterwards
+    # starts a real logging burst to the EXTERNAL ZD25WQ80C flash (same log
+    # format as MicroMouse_main.c) — internal flash is never touched by this
+    # build. See Diagnostics_main.c for the full rationale.
+    set(C_SOURCES
+        Core/Src/Diagnostics_main.c
+        Core/Src/Diagnostics_it.c
+        Core/Src/system_stm32l4xx.c
+        Core/Src/stm32l4xx_hal_timebase_tim.c
+        Core/Src/IMU.c
+        Core/Src/INA219.c
+        Core/Src/SSD1306.c
+        Core/Src/VL53L0X.c
+        Core/Src/Motors.c
+        Core/Src/Buttons.c
+        Core/Src/ADCs.c
+        Core/Src/ZD25WQ80C.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_gpio.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_cortex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_exti.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_spi.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc_ex.c
+    )
+elseif(FLASH_DUMPER_BUILD OR FLASH_WRITER_BUILD)
+    # Standalone image: only SPI2 + the ZD25WQ80C driver + USART1 (polled).
+    # None of the robot peripheral modules are compiled in, since they carry
+    # extern dependencies (hadc1, hi2c1/2, htim1/3/4/5/7, ...) on globals that
+    # only MicroMouse_main.c defines.
+    set(C_SOURCES
+        Core/Src/StandaloneFlash_it.c
+        Core/Src/system_stm32l4xx.c
+        Core/Src/stm32l4xx_hal_timebase_tim.c
+        Core/Src/ZD25WQ80C.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_gpio.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_cortex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_exti.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_spi.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.c
+    )
+    if(FLASH_DUMPER_BUILD)
+        list(APPEND C_SOURCES Core/Src/FlashDumper_main.c)
+    else()
+        list(APPEND C_SOURCES Core/Src/FlashWriter_main.c)
+    endif()
+else()
+    set(C_SOURCES
+        Core/Src/MicroMouse_main.c
+        Core/Src/stm32l4xx_it.c
+        Core/Src/stm32l4xx_hal_msp.c
+        Core/Src/system_stm32l4xx.c
+        Core/Src/stm32l4xx_hal_timebase_tim.c
+        Core/Src/ADCs.c
+        Core/Src/Buttons.c
+        Core/Src/IMU.c
+        Core/Src/INA219.c
+        Core/Src/LEDs.c
+        Core/Src/Motors.c
+        Core/Src/preformatted_flash.c
+        Core/Src/SSD1306.c
+        Core/Src/VL53L0X.c
+        Core/Src/DMA.c
+        Core/Src/VCP.c
+        Core/Src/ZD25WQ80C.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ramfunc.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_gpio.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_cortex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_exti.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_spi.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_usart.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_gpio.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_rcc.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_dma.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc.c
+        Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc_ex.c
+    )
+endif()
 
 # ============================================
 # ASM Sources

@@ -34,9 +34,9 @@
 #include "LEDs.h"
 #include "Buttons.h"
 #include "INA219.h"
-#include "preformatted_flash.h"
 #include "VCP.h"
 #include "DMA.h"
+#include "ZD25WQ80C.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -70,6 +70,8 @@ DMA_HandleTypeDef hdma_tim4_ch1;
 DMA_HandleTypeDef hdma_tim4_ch2;
 DMA_HandleTypeDef hdma_tim4_ch3;
 DMA_HandleTypeDef hdma_tim4_up;
+
+SPI_HandleTypeDef hspi2;
 
 /* USER CODE BEGIN PV */
 
@@ -138,47 +140,34 @@ extern int16_t Vbattery, Vshunt, Current, config, Power;
 extern float miliwattAVG,miliWattTime,totalPowerUsed;
 extern uint8_t STATE;
 
-extern uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
-extern uint16_t usb_storage_buffer_index[2];
-extern uint8_t active_usb_buffer;
 extern uint8_t readyToLog;
-extern uint32_t log_flash_write_addr;
-extern uint32_t log_flash_start_addr;
 uint8_t log_time_counter = 0;
  uint16_t log_sample_counter = 0;  // Wraps at 65535
- 
+
 
 // Global header configuration - modify these values as needed
 uint8_t LOG_VERSION = 1;
-uint8_t LOG_SAMPLING_RATE_HZ = 25;  // Will be dynamically calculated in initLogs()
+uint8_t LOG_SAMPLING_RATE_HZ = 25;
 uint8_t EXPECTED_MINUTES = 5;
 uint8_t STUDENT_NUMBER[9] = "ABCDEF123";  // 9 characters
 
-// Flash region detection structures (populated during initLogs)
-#ifdef FLASH_END
-#undef FLASH_END
-#endif
-#define FLASH_END 0x08080000
-#define FLASH_START 0x08000000
-#define PAGE_SIZE 2048
-#define MAX_FLASH_REGIONS 32
+// Logging target: the EXTERNAL ZD25WQ80C SPI flash only — internal STM32
+// flash is never erased or written for logging. Logs start at external
+// address 0 and run until the whole 1MB chip is full (uncapped).
+uint32_t log_write_addr = 0;             // next external-flash address to program
+uint32_t log_erased_sector = 0xFFFFFFFFU; // sentinel: no sector erased yet
+uint8_t  log_page_buf[ZD25WQ80C_PAGE_SIZE];
+uint16_t log_page_index = 0;
 
-typedef enum {
-    REGION_EMPTY = 0,
-    REGION_APP = 1,
-    REGION_LOG = 2
-} RegionType_t;
-
-typedef struct {
-    uint32_t start;
-    uint32_t end;
-    RegionType_t type;
-} FlashRegion_t;
-
-FlashRegion_t flash_regions[MAX_FLASH_REGIONS];
-uint8_t flash_region_count = 0;
-uint8_t log_pages_to_erase[256];  // Pages containing old logs
-uint16_t log_erase_page_count = 0;
+// Sector-erase (4KB) the sector containing `addr`, but only once per
+// session — the log write pointer only ever moves forward.
+static void ensureLogSectorErased(uint32_t addr) {
+    uint32_t sector = addr & ~((uint32_t)ZD25WQ80C_SECTOR_SIZE - 1);
+    if (sector != log_erased_sector) {
+        ZD25WQ80C_SectorErase(sector);
+        log_erased_sector = sector;
+    }
+}
 
 // functions
 
@@ -372,132 +361,18 @@ typedef struct __attribute__((packed)) {
 
 void initLogs() {
     readyToLog = false;
-    #ifndef COMPILED_BY_SIMULINK 
+    #ifndef COMPILED_BY_SIMULINK
     HAL_DBGMCU_EnableDBGSleepMode();
     HAL_DBGMCU_EnableDBGStandbyMode();
     HAL_DBGMCU_EnableDBGStopMode();
     #endif
-    
-    // Scan entire flash and classify regions as EMPTY, APP, or LOG
-    uint8_t *uid_ptr = (uint8_t*)0x1FFF7590;
-    
-    flash_region_count = 0;
-    log_erase_page_count = 0;
-    
-    // Step 1: Map flash into 2KB page-aligned regions
-    uint32_t region_start = FLASH_START;
-    RegionType_t prev_type = REGION_EMPTY;
-    uint8_t first_region = 1;
-    uint8_t log_region_found = 0;  // Once true, all non-empty pages are logs
-    
-    for (uint32_t scan_addr = FLASH_START; scan_addr < FLASH_END; scan_addr += PAGE_SIZE) {
-        uint8_t *page_ptr = (uint8_t*)scan_addr;
-        RegionType_t page_type = REGION_EMPTY;
-        
-        // Check if page is empty (all 0xFF)
-        uint8_t is_empty = 1;
-        for (uint32_t i = 0; i < PAGE_SIZE; i += 32) {
-            if (page_ptr[i] != 0xFF) {
-                is_empty = 0;
-                break;
-            }
-        }
-        
-        if (!is_empty) {
-            // Page has data - determine if it's APP or LOG
-            uint8_t is_log = 0;
-            
-            // If we've already found a log region, all subsequent non-empty pages are logs
-            if (log_region_found) {
-                is_log = 1;
-            } else {
-                // Check 1: Does page start with UID? (log header signature)
-                uint8_t uid_match = 1;
-                for (uint32_t j = 0; j < 12; j++) {
-                    if (page_ptr[j] != uid_ptr[j]) {
-                        uid_match = 0;
-                        break;
-                    }
-                }
-                if (uid_match) {
-                    is_log = 1;
-                    log_region_found = 1;  // Mark that we've found logs
-                }
-                
-                // Check 2: Scan in 512-byte chunks within page for log patterns
-                if (!is_log) {
-                    for (uint32_t offset = 0; offset < PAGE_SIZE && !is_log; offset += 512) {
-                        uint8_t *check_ptr = page_ptr + offset;
-                        
-                        // Check for UID at this offset
-                        uid_match = 1;
-                        for (uint32_t j = 0; j < 12; j++) {
-                            if (check_ptr[j] != uid_ptr[j]) {
-                                uid_match = 0;
-                                break;
-                            }
-                        }
-                        if (uid_match) {
-                            is_log = 1;
-                            log_region_found = 1;  // Mark that we've found logs
-                            break;
-                        }
-                        
-                        // Check for incrementing sample_count pattern
-                        if ((PAGE_SIZE - offset) >= sizeof(MicroMouseLogHeader_t) + sizeof(MicroMouseLog_t) * 10) {
-                            uint32_t data_start = offset + sizeof(MicroMouseLogHeader_t);
-                            uint16_t *sample_ptr = (uint16_t*)(page_ptr + data_start);
-                            
-                            uint8_t incrementing = 1;
-                            for (uint8_t j = 0; j < 5; j++) {
-                                uint16_t curr = sample_ptr[j * (sizeof(MicroMouseLog_t)/2)];
-                                uint16_t next = sample_ptr[(j+1) * (sizeof(MicroMouseLog_t)/2)];
-                                
-                                if (next != curr + 1 && !(curr == 0xFFFF && next == 0)) {
-                                    incrementing = 0;
-                                    break;
-                                }
-                            }
-                            if (incrementing) {
-                                is_log = 1;
-                                log_region_found = 1;  // Mark that we've found logs
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            page_type = is_log ? REGION_LOG : REGION_APP;
-            
-            // If this is a log page, add to erase list
-            if (is_log) {
-                uint8_t page_num = (scan_addr - FLASH_START) / PAGE_SIZE;
-                log_pages_to_erase[log_erase_page_count++] = page_num;
-            }
-        }
-        
-        // Save region when type changes
-        if (first_region || page_type != prev_type) {
-            if (!first_region && flash_region_count < MAX_FLASH_REGIONS) {
-                flash_regions[flash_region_count].start = region_start;
-                flash_regions[flash_region_count].end = scan_addr;
-                flash_regions[flash_region_count].type = prev_type;
-                flash_region_count++;
-                region_start = scan_addr;
-            }
-            prev_type = page_type;
-            first_region = 0;
-        }
-    }
-    
-    // Add final region
-    if (flash_region_count < MAX_FLASH_REGIONS) {
-        flash_regions[flash_region_count].start = region_start;
-        flash_regions[flash_region_count].end = FLASH_END;
-        flash_regions[flash_region_count].type = prev_type;
-        flash_region_count++;
-    }
+
+    // Logging always starts fresh at external flash address 0 — no old-log
+    // scan needed, since this is a dedicated logging chip, not shared with
+    // application code the way internal flash was.
+    log_write_addr = 0;
+    log_erased_sector = 0xFFFFFFFFU;
+    log_page_index = 0;
 }
 
 bool first_buffer = true;
@@ -525,107 +400,30 @@ void refreshLoggedData() {
 
         // Get our device UID (used for log header)
         uint8_t *uid_ptr = (uint8_t*)0x1FFF7590;
-        
-        // Step 1: Erase all old log pages (detected during initLogs)
-        HAL_FLASH_Unlock();
-        
-        for (uint16_t i = 0; i < log_erase_page_count; i++) {
-            uint32_t erase_addr = FLASH_START + (log_pages_to_erase[i] * PAGE_SIZE);
-            
-            FLASH_EraseInitTypeDef EraseInitStruct;
-            uint32_t PageError;
-            
-            EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
-            EraseInitStruct.Page = log_pages_to_erase[i];
-            EraseInitStruct.NbPages = 1;
-            EraseInitStruct.Banks = (erase_addr < 0x08040000) ? FLASH_BANK_1 : FLASH_BANK_2;
-            
-            HAL_FLASHEx_Erase(&EraseInitStruct, &PageError);
-        }
-        
-        HAL_FLASH_Lock();
-        
-        // Step 2: Update flash_regions - convert all LOG regions to EMPTY and merge
-        for (uint8_t i = 0; i < flash_region_count; i++) {
-            if (flash_regions[i].type == REGION_LOG) {
-                flash_regions[i].type = REGION_EMPTY;
-            }
-        }
-        
-        // Merge adjacent EMPTY regions
-        uint8_t write_idx = 0;
-        for (uint8_t read_idx = 0; read_idx < flash_region_count; read_idx++) {
-            if (write_idx > 0 && 
-                flash_regions[write_idx - 1].type == REGION_EMPTY && 
-                flash_regions[read_idx].type == REGION_EMPTY) {
-                // Merge with previous region
-                flash_regions[write_idx - 1].end = flash_regions[read_idx].end;
-            } else {
-                // Copy region
-                if (write_idx != read_idx) {
-                    flash_regions[write_idx] = flash_regions[read_idx];
-                }
-                write_idx++;
-            }
-        }
-        flash_region_count = write_idx;
-        
-        // Step 3: Find best log start address (first EMPTY region that goes to end of flash)
-        log_flash_write_addr = 0;
-        for (uint8_t i = 0; i < flash_region_count; i++) {
-            if (flash_regions[i].type == REGION_EMPTY && flash_regions[i].end == FLASH_END) {
-                log_flash_write_addr = flash_regions[i].start;
-                break;
-            }
-        }
-        
-        // If no empty region to end of flash, find first empty region after app code
-        if (log_flash_write_addr == 0) {
-            for (uint8_t i = 0; i < flash_region_count; i++) {
-                if (flash_regions[i].type == REGION_EMPTY) {
-                    log_flash_write_addr = flash_regions[i].start;
-                    break;
-                }
-            }
-        }
-        
-        // Fallback if no free region found
-        if (log_flash_write_addr == 0) {
-            log_flash_write_addr = 0x08040000;  // Use midpoint as fallback
-        }
-        
-        // Store the starting address for percentage calculation
-        log_flash_start_addr = log_flash_write_addr;
-        
-        // Calculate optimal sampling rate based on available flash and expected duration
-        uint8_t optimal_rate = calculateOptimalSamplingRate(log_flash_write_addr, 
-                                                            EXPECTED_MINUTES, 
-                                                            sizeof(MicroMouseLog_t));
-        
-        // Update the global sampling rate (used in header and Simulink timing)
-        LOG_SAMPLING_RATE_HZ = optimal_rate;
-        
-        // Configure TIM7 with calculated rate
-        configureTimer(optimal_rate, TIM7);
-        HAL_TIM_Base_Start_IT(&htim7);
 
-        // Step 3: Write metadata header at the start of the very first buffer
+        // Logging always starts at external flash address 0 (matching
+        // initLogs()); erase-as-you-go handles the rest as bytes are written.
+        log_write_addr = 0;
+        log_erased_sector = 0xFFFFFFFFU;
+        ensureLogSectorErased(log_write_addr);
+
+        // Write metadata header at the start of the very first page
         MicroMouseLogHeader_t header;
-        
+
         // Populate header from global variables (UUID first for detection!)
         memcpy(header.uuid, uid_ptr, 12);
         header.version = LOG_VERSION;
         header.sampling_rate_hz = LOG_SAMPLING_RATE_HZ;
         header.expected_minutes = EXPECTED_MINUTES;
         memcpy(header.student_number, STUDENT_NUMBER, 9);
-        
+
         // Write header to buffer
-        memcpy(USB_storage_buffer[active_usb_buffer], &header, sizeof(MicroMouseLogHeader_t));
-        usb_storage_buffer_index[active_usb_buffer] = sizeof(MicroMouseLogHeader_t);
-        
+        memcpy(log_page_buf, &header, sizeof(MicroMouseLogHeader_t));
+        log_page_index = sizeof(MicroMouseLogHeader_t);
+
         // Change OLED to show logging started: "LOGGING RUN :   0%" (18 chars)
         snprintf(SSD1306_Data.oled_string1, 19, "LOGGING RUN :   0%%");
-        
+
         first_buffer = false;
     }
 
@@ -655,39 +453,37 @@ void refreshLoggedData() {
     log.IMU_Gyro_Y = (int16_t)(IMU_Gyro[1] * 1000.0f);
     log.IMU_Gyro_Z = (int16_t)(IMU_Gyro[2] * 1000.0f);
     
-    // Write log to buffer, handling 2KB boundary with partial writes and flushing
+    // Write log to buffer, handling the external flash's 256-byte page
+    // boundary with partial writes and flushing.
     uint8_t *log_bytes = (uint8_t*)&log;
     uint16_t log_offset = 0;
-    
+
     while (log_offset < sizeof(MicroMouseLog_t)) {
-        // Calculate how much space is left in current buffer
-        uint16_t buffer_space = USB_BUFFER_SIZE - usb_storage_buffer_index[active_usb_buffer];
-        
-        // Write as much as we can (either remaining log bytes or remaining buffer space)
-        uint16_t to_write = (sizeof(MicroMouseLog_t) - log_offset < buffer_space) ? 
-                            (sizeof(MicroMouseLog_t) - log_offset) : buffer_space;
-        
-        memcpy(&USB_storage_buffer[active_usb_buffer][usb_storage_buffer_index[active_usb_buffer]], 
-               log_bytes + log_offset, to_write);
-        
-        usb_storage_buffer_index[active_usb_buffer] += to_write;
+        // Calculate how much space is left in the current page buffer
+        uint16_t page_space = ZD25WQ80C_PAGE_SIZE - log_page_index;
+
+        // Write as much as we can (either remaining log bytes or remaining page space)
+        uint16_t to_write = (sizeof(MicroMouseLog_t) - log_offset < page_space) ?
+                            (sizeof(MicroMouseLog_t) - log_offset) : page_space;
+
+        memcpy(&log_page_buf[log_page_index], log_bytes + log_offset, to_write);
+
+        log_page_index += to_write;
         log_offset += to_write;
-        
-        // If buffer is full (reached 2KB), flush it
-        if (usb_storage_buffer_index[active_usb_buffer] >= USB_BUFFER_SIZE) {
-            Flash_Write_Data(log_flash_write_addr, USB_storage_buffer[active_usb_buffer], USB_BUFFER_SIZE);
-            log_flash_write_addr += USB_BUFFER_SIZE;
-            
+
+        // If the page buffer is full (256 bytes), program it and advance
+        if (log_page_index >= ZD25WQ80C_PAGE_SIZE) {
+            ensureLogSectorErased(log_write_addr);
+            ZD25WQ80C_PageProgram(log_write_addr, log_page_buf, log_page_index);
+            log_write_addr += ZD25WQ80C_PAGE_SIZE;
+            log_page_index = 0;
+
             // Update OLED with logging percentage: "LOGGING RUN : xxx%" (18 chars)
-            #ifdef FLASH_END
-#undef FLASH_END
-#endif
-#define FLASH_END 0x08080000
-            uint32_t flash_used = log_flash_write_addr - log_flash_start_addr;
-            uint32_t flash_available = FLASH_END - log_flash_start_addr;
+            uint32_t flash_used = log_write_addr;
+            uint32_t flash_available = ZD25WQ80C_FLASH_SIZE;
             uint8_t percentage = (uint8_t)((flash_used * 100) / flash_available);
             if (percentage > 100) percentage = 100;
-            
+
             // Update percentage digits at positions 14, 15, 16 (% stays at position 17)
             if (percentage < 10) {
                 SSD1306_Data.oled_string1[14] = ' ';
@@ -702,23 +498,22 @@ void refreshLoggedData() {
                 SSD1306_Data.oled_string1[15] = '0';
                 SSD1306_Data.oled_string1[16] = '0';
             }
-            
-            // Check if we just wrote to the last page (0x0807F800 to 0x0807FFFF)
-            #define FLASH_LAST_PAGE 0x0807F800
-            if ((log_flash_write_addr - USB_BUFFER_SIZE) >= FLASH_LAST_PAGE) {
+
+            // Check if the entire external flash chip is now full
+            if (log_write_addr >= ZD25WQ80C_FLASH_SIZE) {
                 // Flash log region is full - enter safe mode
                 __disable_irq();  // Disable all interrupts
-                
+
                 // Turn off motor control FET
                 HAL_GPIO_WritePin(MOTOR_EN_GPIO_Port, MOTOR_EN_Pin, GPIO_PIN_RESET);
         MOTOR_L.magnitude = 0;
         MOTOR_R.magnitude = 0;
-                
+
                 // Display on OLED
                 snprintf(SSD1306_Data.oled_string1, sizeof(SSD1306_Data.oled_string1), "LOGS FULL!");
                 snprintf(SSD1306_Data.oled_string2, sizeof(SSD1306_Data.oled_string2), "Safe Mode");
         refreshScreen();
-                
+
                 // Infinite loop with LED blinking (1 second on/off using NOP delay)
                 while(1) {
                     // Turn LEDs on
@@ -726,27 +521,24 @@ void refreshLoggedData() {
                     LED1.state = 1;
                     LED2.state = 1;
                     refreshLEDs();
-                    
+
                     // ~1 second delay using NOPs (80MHz clock, ~80M NOPs = 1 sec)
                     for(volatile uint32_t i = 0; i < 20000000; i++) {
                         __NOP();
                     }
-                    
+
                     // Turn LEDs off
                     LED0.state = 0;
                     LED1.state = 0;
                     LED2.state = 0;
                     refreshLEDs();
-                    
+
                     // ~1 second delay using NOPs
                     for(volatile uint32_t i = 0; i < 20000000; i++) {
                         __NOP();
                     }
                 }
             }
-            
-        active_usb_buffer ^= 1;
-        usb_storage_buffer_index[active_usb_buffer] = 0;
         }
     }
     readyToLog = false;
@@ -783,6 +575,7 @@ void initMicroMouse(){
   initMotors();
   initLEDs();
   initSW();
+  initZD25WQ80C();
   initLogs();
 }
 
@@ -853,6 +646,7 @@ void main(void)
   MX_TIM5_Init();
   MX_TIM7_Init();
   MX_USART1_UART_Init();
+  MX_SPI2_Init();
   MX_NVIC_Init();
 
 
@@ -1717,10 +1511,8 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB1 PB12 PB13 PB14
-                           PB15 PB4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14
-                          |GPIO_PIN_15|GPIO_PIN_4;
+  /*Configure GPIO pins : PB1 PB4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
@@ -1764,7 +1556,40 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(IMU_INT_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /*Configure GPIO pin : FLASH_CS_Pin (PB12) — deasserted high at boot */
+  GPIO_InitStruct.Pin = FLASH_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(FLASH_CS_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(FLASH_CS_GPIO_Port, FLASH_CS_Pin, GPIO_PIN_SET);
   /* USER CODE END MX_GPIO_Init_2 */
+}
+
+/**
+  * @brief SPI2 Initialization Function (ZD25WQ80C external flash)
+  * @retval None
+  */
+void MX_SPI2_Init(void)
+{
+  hspi2.Instance               = SPI2;
+  hspi2.Init.Mode              = SPI_MODE_MASTER;
+  hspi2.Init.Direction         = SPI_DIRECTION_2LINES;
+  hspi2.Init.DataSize          = SPI_DATASIZE_8BIT;
+  hspi2.Init.CLKPolarity       = SPI_POLARITY_LOW;
+  hspi2.Init.CLKPhase          = SPI_PHASE_1EDGE;
+  hspi2.Init.NSS               = SPI_NSS_SOFT;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;  /* 80 MHz / 8 = 10 MHz */
+  hspi2.Init.FirstBit          = SPI_FIRSTBIT_MSB;
+  hspi2.Init.TIMode            = SPI_TIMODE_DISABLE;
+  hspi2.Init.CRCCalculation    = SPI_CRCCALCULATION_DISABLE;
+  hspi2.Init.CRCPolynomial     = 7;
+  hspi2.Init.CRCLength         = SPI_CRC_LENGTH_DATASIZE;
+  hspi2.Init.NSSPMode          = SPI_NSS_PULSE_DISABLE;
+  if (HAL_SPI_Init(&hspi2) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 
 /* USER CODE BEGIN 4 */

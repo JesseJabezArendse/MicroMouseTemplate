@@ -59,6 +59,8 @@ DMA_HandleTypeDef hdma_adc1;
 I2C_HandleTypeDef hi2c1;
 I2C_HandleTypeDef hi2c2;
 
+SPI_HandleTypeDef hspi2;
+
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
@@ -712,6 +714,7 @@ void main(void)
   MX_ADC1_Init();
   MX_I2C1_Init();
   MX_I2C2_Init();
+  MX_SPI2_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
   MX_TIM4_Init();
@@ -1041,6 +1044,47 @@ void MX_I2C2_Init(void)
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
+
+}
+
+/**
+  * @brief SPI2 Initialization Function
+  * @param None
+  * @retval None
+  */
+void MX_SPI2_Init(void)
+{
+
+  /* USER CODE BEGIN SPI2_Init 0 */
+
+  /* USER CODE END SPI2_Init 0 */
+
+  /* USER CODE BEGIN SPI2_Init 1 */
+
+  /* USER CODE END SPI2_Init 1 */
+
+  hspi2.Instance               = SPI2;
+  hspi2.Init.Mode              = SPI_MODE_MASTER;
+  hspi2.Init.Direction         = SPI_DIRECTION_2LINES;
+  hspi2.Init.DataSize          = SPI_DATASIZE_8BIT;
+  hspi2.Init.CLKPolarity       = SPI_POLARITY_LOW;
+  hspi2.Init.CLKPhase          = SPI_PHASE_1EDGE;
+  hspi2.Init.NSS               = SPI_NSS_SOFT;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;  /* 80 MHz / 8 = 10 MHz */
+  hspi2.Init.FirstBit          = SPI_FIRSTBIT_MSB;
+  hspi2.Init.TIMode            = SPI_TIMODE_DISABLE;
+  hspi2.Init.CRCCalculation    = SPI_CRCCALCULATION_DISABLE;
+  hspi2.Init.CRCPolynomial     = 7;
+  hspi2.Init.CRCLength         = SPI_CRC_LENGTH_DATASIZE;
+  hspi2.Init.NSSPMode          = SPI_NSS_PULSE_DISABLE;
+  if (HAL_SPI_Init(&hspi2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* USER CODE BEGIN SPI2_Init 2 */
+
+  /* USER CODE END SPI2_Init 2 */
 
 }
 
@@ -1571,13 +1615,19 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB1 PB12 PB13 PB14
-                           PB15 PB4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14
-                          |GPIO_PIN_15|GPIO_PIN_4;
+  /*Configure GPIO pins : PB1 PB4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : FLASH_CS_Pin (PB12) — deasserted high at boot */
+  GPIO_InitStruct.Pin = FLASH_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(FLASH_CS_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(FLASH_CS_GPIO_Port, FLASH_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : SW2_Pin IMU_INT_Pin */
   GPIO_InitStruct.Pin = SW2_Pin|IMU_INT_Pin;
