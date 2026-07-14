@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "stm32l4xx_hal.h" // Change it for your requirements.
+#include <stdio.h>
 #include "string.h"
 #include "VL53L0X.h"
 #include "main.h"
@@ -576,6 +577,13 @@ void refreshTOFValues() {
 }
 
 void initTOFs(uint16_t signalRate){
+  extern void raw_uart_print(const char *str);
+  raw_uart_print("initTOFs entered!\r\n");
+  char buf[64];
+  uint32_t primask = __get_PRIMASK();
+  snprintf(buf, sizeof(buf), "  PRIMASK interrupt status: %u\r\n", (unsigned int)primask);
+  raw_uart_print(buf);
+
   TOF_sb_left_result.Address = newToFAddress_L;         TOF_sb_left_result.I2Cx = &hi2c2;        TOF_sb_left_result.XSHUT_Port = XSHUT1_GPIO_Port; TOF_sb_left_result.XSHUT_Pin = XSHUT1_Pin; TOF_sb_left_result.Distance = 8190;
   TOF_sb_front_left_result.Address = newToFAddress_FL;  TOF_sb_front_left_result.I2Cx = &hi2c2;  TOF_sb_front_left_result.XSHUT_Port = XSHUT4_GPIO_Port; TOF_sb_front_left_result.XSHUT_Pin = XSHUT4_Pin; TOF_sb_front_left_result.Distance = 8190;
   TOF_sb_front_result.Address = newToFAddress_C;       TOF_sb_front_result.I2Cx = &hi2c2;       TOF_sb_front_result.XSHUT_Port = XSHUT2_GPIO_Port; TOF_sb_front_result.XSHUT_Pin = XSHUT2_Pin; TOF_sb_front_result.Distance = 8190;
@@ -644,15 +652,42 @@ void initTOFs(uint16_t signalRate){
   HAL_Delay(200);
 
   // Enable each sensor one at a time and initialise it
+  extern void raw_uart_print(const char *str);
+  raw_uart_print("  initTOFs: initializing left...\r\n");
   initVL53L0(&TOF_sb_left_result, signalRate);
+  raw_uart_print("  initTOFs: left done.\r\n");
+
+  raw_uart_print("  initTOFs: initializing front-left...\r\n");
   initVL53L0(&TOF_sb_front_left_result, signalRate);
+  raw_uart_print("  initTOFs: front-left done.\r\n");
+
+  raw_uart_print("  initTOFs: initializing front...\r\n");
   initVL53L0(&TOF_sb_front_result, signalRate);
+  raw_uart_print("  initTOFs: front done.\r\n");
+
+  raw_uart_print("  initTOFs: initializing front-right...\r\n");
   initVL53L0(&TOF_sb_front_right_result, signalRate);
+  raw_uart_print("  initTOFs: front-right done.\r\n");
+
+  raw_uart_print("  initTOFs: initializing right...\r\n");
   initVL53L0(&TOF_sb_right_result, signalRate);
+  raw_uart_print("  initTOFs: right done.\r\n");
+
+  raw_uart_print("  initTOFs: initializing back...\r\n");
   initVL53L0(&TOF_mb_back_result, signalRate);
+  raw_uart_print("  initTOFs: back done.\r\n");
+
+  raw_uart_print("  initTOFs: initializing main-front...\r\n");
   initVL53L0(&TOF_mb_front_result, signalRate);
+  raw_uart_print("  initTOFs: main-front done.\r\n");
+
+  raw_uart_print("  initTOFs: initializing main-front-left...\r\n");
   initVL53L0(&TOF_mb_front_left_result, signalRate);
+  raw_uart_print("  initTOFs: main-front-left done.\r\n");
+
+  raw_uart_print("  initTOFs: initializing main-front-right...\r\n");
   initVL53L0(&TOF_mb_front_right_result, signalRate);
+  raw_uart_print("  initTOFs: main-front-right done.\r\n");
 
   setTimeout(5);
 }

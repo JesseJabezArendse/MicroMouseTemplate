@@ -35,10 +35,18 @@ BUILD_DIR = build
 # source
 ######################################
 # C sources
+ifeq ($(DIAGNOSTICS), 1)
+C_SOURCES =  \
+Core/Src/Diagnostics_main.c \
+Core/Src/Diagnostics_it.c
+else
 C_SOURCES =  \
 Core/Src/main.c \
 Core/Src/stm32l4xx_it.c \
-Core/Src/stm32l4xx_hal_msp.c \
+Core/Src/stm32l4xx_hal_msp.c
+endif
+
+C_SOURCES += \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.c \

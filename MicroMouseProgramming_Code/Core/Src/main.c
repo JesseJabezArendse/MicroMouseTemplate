@@ -713,34 +713,93 @@ void updateMicroMouse(){
 
 #define STARTUP_HOLD_MS 5000
 
+static void raw_uart_init(uint32_t baud_divider) {
+    RCC->AHB2ENR |= RCC_AHB2ENR_GPIOBEN;
+    GPIOB->MODER = (GPIOB->MODER & ~GPIO_MODER_MODE6) | GPIO_MODER_MODE6_1;
+    GPIOB->AFR[0] = (GPIOB->AFR[0] & ~GPIO_AFRL_AFSEL6) | (7 << GPIO_AFRL_AFSEL6_Pos);
+    RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
+    USART1->CR1 &= ~USART_CR1_UE;
+    USART1->BRR = baud_divider;
+    USART1->CR1 |= USART_CR1_TE | USART_CR1_UE;
+}
+
+void raw_uart_print(const char *str) {
+    if (USART1 != NULL && (RCC->APB2ENR & RCC_APB2ENR_USART1EN)) {
+        for (const char *p = str; *p; p++) {
+            while (!(USART1->ISR & USART_ISR_TXE));
+            USART1->TDR = (uint8_t)*p;
+        }
+    }
+}
+
 void main(void)
 {
+  raw_uart_init(35); // 4 MHz MSI clock divider for 115200 baud
+  raw_uart_print("\r\n--- STM32 main() Started ---\r\n");
+
+  // Force Backup Domain reset to release LSE clock from PC14/PC15 GPIO pins
+  __HAL_RCC_PWR_CLK_ENABLE();
+  HAL_PWR_EnableBkUpAccess();
+  __HAL_RCC_BACKUPRESET_FORCE();
+  __HAL_RCC_BACKUPRESET_RELEASE();
+
   // Initialize the HAL Library; it must be the first function to be executed
   HAL_Init();
+  raw_uart_print("HAL_Init completed.\r\n");
 
   // Configure the system clock
   SystemClock_Config();
+  SystemCoreClockUpdate();
+  raw_uart_init(694); // 80 MHz SYSCLK divider for 115200 baud
+  raw_uart_print("SystemClock_Config completed (80 MHz).\r\n");
 
   // Initialize all configured peripherals
   MX_DMA_Init();
+  raw_uart_print("DMA initialized.\r\n");
   MX_GPIO_Init();
+  raw_uart_print("GPIO initialized.\r\n");
   MX_ADC1_Init();
+  raw_uart_print("ADC1 initialized.\r\n");
   MX_I2C1_Init();
+  raw_uart_print("I2C1 initialized.\r\n");
   MX_I2C2_Init();
+  raw_uart_print("I2C2 initialized.\r\n");
   MX_SPI2_Init();
+  raw_uart_print("SPI2 initialized.\r\n");
   MX_TIM1_Init();
+  raw_uart_print("TIM1 initialized.\r\n");
   MX_TIM3_Init();
+  raw_uart_print("TIM3 initialized.\r\n");
   MX_TIM4_Init();
+  raw_uart_print("TIM4 initialized.\r\n");
   MX_TIM5_Init();
+  raw_uart_print("TIM5 initialized.\r\n");
   MX_TIM7_Init();
+  raw_uart_print("TIM7 initialized.\r\n");
   MX_NVIC_Init();
+  raw_uart_print("NVIC initialized.\r\n");
 
 #ifdef COMPILED_BY_SIMULINK
   #ifdef RUN_STUDENT_TEMPLATE
+    raw_uart_print("Initializing StudentTemplate model...\r\n");
     StudentTemplate_initialize();
+    raw_uart_print("StudentTemplate initialized.\r\n");
   #else
+    raw_uart_print("Initializing MicroMouse_Deploy model...\r\n");
     MicroMouse_Deploy_initialize();
+    raw_uart_print("MicroMouse_Deploy initialized.\r\n");
   #endif
+
+  // Onboard LED diagnostic check:
+  // Turn on LED control gating pin (PB3) first
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
+  if (SSD1306_Data.Initialized) {
+      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, GPIO_PIN_SET); // LED1 (Green/Success) ON
+      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+  } else {
+      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET); // LED0 (Red/Failure) ON
+      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, GPIO_PIN_RESET);
+  }
 #else
   initMicroMouse();
 #endif
@@ -831,6 +890,15 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_I2C1 | RCC_PERIPHCLK_I2C2;
+  PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
+  PeriphClkInitStruct.I2c2ClockSelection = RCC_I2C2CLKSOURCE_PCLK1;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
     Error_Handler();
   }
@@ -1736,7 +1804,11 @@ void MX_GPIO_Init(void)
   * @param  htim : TIM handle
   * @retval None
   */
+#ifdef COMPILING_FOR_MICROPYTHON
 void jesse_legacy_period_elapsed_callback(TIM_HandleTypeDef *htim)
+#else
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+#endif
 {
   /* USER CODE BEGIN Callback 0 */
 
@@ -1757,17 +1829,26 @@ void jesse_legacy_period_elapsed_callback(TIM_HandleTypeDef *htim)
 #ifndef COMPILING_FOR_MICROPYTHON
 void Error_Handler(void)
 {
-  /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  // __disable_irq();
-  // initMicroMouse();
-  // __enable_irq();
+  __disable_irq();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
+
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
   while (1)
   {
-    /* code */
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+    for (volatile int i = 0; i < 1000000; i++);
   }
-  
-  /* USER CODE END Error_Handler_Debug */
 }
 #endif
 #ifdef USE_FULL_ASSERT

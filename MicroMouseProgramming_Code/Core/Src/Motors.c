@@ -18,6 +18,7 @@
 #include "main.h"
 #include "math.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 Motor_t MOTOR_L = {0, 0};
 Motor_t MOTOR_R = {0, 0};

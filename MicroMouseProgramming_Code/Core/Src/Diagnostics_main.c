@@ -59,6 +59,9 @@ TIM_HandleTypeDef  htim7;
 SPI_HandleTypeDef  hspi2;
 UART_HandleTypeDef huart1;
 
+volatile int32_t leftEncoderCount = 0;
+volatile int32_t rightEncoderCount = 0;
+
 /* ADCs.c defines these under different names than ADCs.h declares
    (V_BATT/V_PHOTO_* vs VBAT/PHOTO_*) — redeclared here to match what's
    actually defined, same workaround MicroMouse_main.c uses. */

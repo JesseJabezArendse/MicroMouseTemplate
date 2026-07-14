@@ -422,14 +422,18 @@ uint8_t SSD1306_Init(void) {
 	if (status != HAL_OK) {
 		/* Return false */
 		SSD1306_Data.Initialized = false;
-		extern UART_HandleTypeDef huart1;
-		char err[] = "SSD1306 Init FAILED: Device not ready\r\n";
-		HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 100);
+		extern UART_HandleTypeDef huart1 __attribute__((weak));
+		if (&huart1 != NULL && huart1.Instance != NULL) {
+			char err[] = "SSD1306 Init FAILED: Device not ready\r\n";
+			HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 100);
+		}
 		return 0;
 	} else {
-		extern UART_HandleTypeDef huart1;
-		char msg[] = "SSD1306 Init SUCCESS\r\n";
-		HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 100);
+		extern UART_HandleTypeDef huart1 __attribute__((weak));
+		if (&huart1 != NULL && huart1.Instance != NULL) {
+			char msg[] = "SSD1306 Init SUCCESS\r\n";
+			HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 100);
+		}
 	}
 	
 	/* A little delay */
@@ -1084,19 +1088,23 @@ void refreshScreen() {
         y_position += font_to_use->FontHeight;
         remaining_height -= font_to_use->FontHeight;
     }
-
 #else
-    // Fixed font size for all strings except SSD1306_Data.oled_string1
-    SSD1306_GotoXY(0, 0);
+    // Use Font_7x10 for all 5 strings so they fit on the screen cleanly.
+    // Alignment is set to match the yellow (0-15) and blue (16-63) screen split.
+    SSD1306_GotoXY(0, 0);   // Header (Yellow zone)
     SSD1306_Puts(SSD1306_Data.oled_string1, &Font_7x10, 1);
 
-    SSD1306_GotoXY(0, 16);
-    SSD1306_Puts(SSD1306_Data.oled_string2, &Font_11x18, 1);
+    SSD1306_GotoXY(0, 16);  // Start of Blue zone
+    SSD1306_Puts(SSD1306_Data.oled_string2, &Font_7x10, 1);
 
-    SSD1306_GotoXY(0, 34);
-    SSD1306_Puts(SSD1306_Data.oled_string3, &Font_11x18, 1);
+    SSD1306_GotoXY(0, 28);  // Blue zone
+    SSD1306_Puts(SSD1306_Data.oled_string3, &Font_7x10, 1);
 
+    SSD1306_GotoXY(0, 40);  // Blue zone
+    SSD1306_Puts(SSD1306_Data.oled_string4, &Font_7x10, 1);
 
+    SSD1306_GotoXY(0, 52);  // Blue zone
+    SSD1306_Puts(SSD1306_Data.oled_string5, &Font_7x10, 1);
 #endif
  SSD1306_UpdateScreen();
 }

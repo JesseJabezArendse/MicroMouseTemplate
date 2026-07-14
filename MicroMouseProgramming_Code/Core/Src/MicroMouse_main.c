@@ -739,6 +739,15 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
+  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_I2C1 | RCC_PERIPHCLK_I2C2;
+  PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
+  PeriphClkInitStruct.I2c2ClockSelection = RCC_I2C2CLKSOURCE_PCLK1;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 #endif
 
@@ -1604,7 +1613,11 @@ void MX_SPI2_Init(void)
   * @param  htim : TIM handle
   * @retval None
   */
+#ifdef COMPILING_FOR_MICROPYTHON
 void jesse_legacy_period_elapsed_callback(TIM_HandleTypeDef *htim)
+#else
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+#endif
 {
   /* USER CODE BEGIN Callback 0 */
 
