@@ -86,7 +86,7 @@ void initMotors(void)
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
 
     // ── Enable TIM4 interrupts in NVIC for encoder tracking ──────────────
-    HAL_NVIC_SetPriority(TIM4_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(TIM4_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(TIM4_IRQn);
 
     // ── Start TIM4 input-capture ─────────────────────────────────────────
@@ -112,33 +112,31 @@ void refreshMotors(void)
     // Positive magnitude  → forward channel active, backward = 0
     // Negative magnitude  → backward channel active, forward = 0
     // Zero                → both channels = 0  (coast)
-
-    // Right motor
-    if (MOTOR_R.magnitude > 0) {
-        uint32_t duty = ((uint32_t)MOTOR_R.magnitude * (arr + 1)) / 100;
+    if (MOTOR_R.speedSetpoint >= 0)
+    {
+        uint32_t duty = (MOTOR_R.speedSetpoint * arr) / 100;
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, duty);
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0);
-    } else if (MOTOR_R.magnitude < 0) {
-        uint32_t duty = ((uint32_t)(-MOTOR_R.magnitude) * (arr + 1)) / 100;
+    }
+    else
+    {
+        uint32_t duty = (-MOTOR_R.speedSetpoint * arr) / 100;
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, duty);
-    } else {
-        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
-        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0);
     }
 
-    // Left motor
-    if (MOTOR_L.magnitude > 0) {
-        uint32_t duty = ((uint32_t)MOTOR_L.magnitude * (arr + 1)) / 100;
+    if (MOTOR_L.speedSetpoint >= 0)
+    {
+        uint32_t duty = (MOTOR_L.speedSetpoint * arr) / 100;
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, duty);
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
-    } else if (MOTOR_L.magnitude < 0) {
-        uint32_t duty = ((uint32_t)(-MOTOR_L.magnitude) * (arr + 1)) / 100;
+    }
+    else
+    {
+        uint32_t duty = (-MOTOR_L.speedSetpoint * arr) / 100;
+        // Bypassing left wheel reverse driver bug: write CCR4 directly with negative duty
+        TIM3->CCR4 = duty;
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
-        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, duty);
-    } else {
-        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
-        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
     }
 
     // ── Stall detection ───────────────────────────────────────────────────
@@ -169,11 +167,14 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
         prev_r_cap        = cap;
         last_r_edge_ms    = now_ms;
 
+        int8_t dir = HAL_GPIO_ReadPin(MOTORR_B_ENC_GPIO_Port, MOTORR_B_ENC_Pin) ? -1 : 1;  // inverted: motor mounted opposing
+        rightEncoderCount += dir;
+
         if (delta_us > 0 && delta_us < 62000U) {
             int32_t rate_x100 = (int32_t)(((60000000LL * RPM_SCALE)) / ((int64_t)ENC_TICKS_PER_REV * (int64_t)delta_us));
-            int8_t  dir  = HAL_GPIO_ReadPin(MOTORR_B_ENC_GPIO_Port, MOTORR_B_ENC_Pin) ? -1 : 1;  // inverted: motor mounted opposing
             MOTOR_R.encoderRate = clamp_to_i16((int32_t)dir * rate_x100);
-            rightEncoderCount += dir;
+        } else {
+            MOTOR_R.encoderRate = 0;
         }
     }
     else if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3)
@@ -184,11 +185,14 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
         prev_l_cap        = cap;
         last_l_edge_ms    = now_ms;
 
+        int8_t dir = HAL_GPIO_ReadPin(MOTORL_B_ENC_GPIO_Port, MOTORL_B_ENC_Pin) ? 1 : -1;
+        leftEncoderCount += dir;
+
         if (delta_us > 0 && delta_us < 62000U) {
             int32_t rate_x100 = (int32_t)(((60000000LL * RPM_SCALE)) / ((int64_t)ENC_TICKS_PER_REV * (int64_t)delta_us));
-            int8_t  dir  = HAL_GPIO_ReadPin(MOTORL_B_ENC_GPIO_Port, MOTORL_B_ENC_Pin) ? 1 : -1;
             MOTOR_L.encoderRate = clamp_to_i16((int32_t)dir * rate_x100);
-            leftEncoderCount += dir;
+        } else {
+            MOTOR_L.encoderRate = 0;
         }
     }
 }
