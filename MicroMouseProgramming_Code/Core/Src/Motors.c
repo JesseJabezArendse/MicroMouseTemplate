@@ -85,6 +85,10 @@ void initMotors(void)
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
 
+    // ── Enable TIM4 interrupts in NVIC for encoder tracking ──────────────
+    HAL_NVIC_SetPriority(TIM4_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(TIM4_IRQn);
+
     // ── Start TIM4 input-capture ─────────────────────────────────────────
     // CH1 = right A-phase: IT fires on every rising edge, callback computes speed
     HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_1);
