@@ -112,28 +112,28 @@ void refreshMotors(void)
     // Positive magnitude  → forward channel active, backward = 0
     // Negative magnitude  → backward channel active, forward = 0
     // Zero                → both channels = 0  (coast)
-    if (MOTOR_R.speedSetpoint >= 0)
+    if (MOTOR_R.magnitude >= 0)
     {
-        uint32_t duty = (MOTOR_R.speedSetpoint * arr) / 100;
+        uint32_t duty = (MOTOR_R.magnitude * arr) / 100;
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, duty);
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0);
     }
     else
     {
-        uint32_t duty = (-MOTOR_R.speedSetpoint * arr) / 100;
+        uint32_t duty = (-MOTOR_R.magnitude * arr) / 100;
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, duty);
     }
 
-    if (MOTOR_L.speedSetpoint >= 0)
+    if (MOTOR_L.magnitude >= 0)
     {
-        uint32_t duty = (MOTOR_L.speedSetpoint * arr) / 100;
+        uint32_t duty = (MOTOR_L.magnitude * arr) / 100;
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, duty);
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
     }
     else
     {
-        uint32_t duty = (-MOTOR_L.speedSetpoint * arr) / 100;
+        uint32_t duty = (-MOTOR_L.magnitude * arr) / 100;
         // Bypassing left wheel reverse driver bug: write CCR4 directly with negative duty
         TIM3->CCR4 = duty;
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
