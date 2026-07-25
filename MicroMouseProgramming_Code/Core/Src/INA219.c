@@ -110,11 +110,11 @@ int16_t INA219_ReadCurrent(INA219_t *ina219)
  * 				between the voltage of the Power supply and the bus voltage after the shunt
  * 				resistor.
  */
-uint16_t INA219_ReadShuntVolage(INA219_t *ina219)
+int16_t INA219_ReadShuntVolage(INA219_t *ina219)
 {
-	uint16_t result = Read16(ina219, INA219_REG_SHUNTVOLTAGE);
+	int16_t result = (int16_t)Read16(ina219, INA219_REG_SHUNTVOLTAGE);
 
-	return (result * 0.01 );
+	return (result / 100);
 }
 /*
  * @brief: 	This reads the Power register then multiplies it by the Power multiplier.
@@ -387,7 +387,7 @@ void INA219_setCalibration_MaxRes(INA219_t *ina219)
 					  INA219_CONFIG_SADCRES_12BIT_128S_69MS |
 					  INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS;
 
-	ina219_calibrationValue = 16384; // For 50uA/bit, Rshunt = 0.05Ω
+	ina219_calibrationValue = 8192; // For 50uA/bit, Rshunt = 0.1Ω (corrected from 0.05Ω)
 	ina219_CurrentDivider_mA = 20;   // 1000/50uA
 	ina219_PowerMultiplier_mW = 1;   // 1mW/bit
 

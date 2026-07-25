@@ -320,8 +320,48 @@ uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAd
 }
 
 void restartI2C(I2C_HandleTypeDef *hi2c){
+  if (hi2c == NULL || hi2c->Instance == NULL) {
+      return;
+  }
+
   hi2c->State = HAL_I2C_STATE_READY;
   hi2c->ErrorCode = HAL_I2C_ERROR_NONE;
+
+  // Rate-limit physical bus recovery to at most once per second (1000ms) to prevent I2C starvation when sensors are missing
+  static uint32_t last_recovery_time1 = 0;
+  static uint32_t last_recovery_time2 = 0;
+  uint32_t now = HAL_GetTick();
+
+  extern void I2C_Bus_Recovery(GPIO_TypeDef* GPIOx, uint16_t SCL_Pin, uint16_t SDA_Pin);
+  if (hi2c->Instance == I2C1) {
+      if (now - last_recovery_time1 >= 1000) {
+          last_recovery_time1 = now;
+          __HAL_I2C_DISABLE(hi2c);
+          I2C_Bus_Recovery(GPIOB, GPIO_PIN_8, GPIO_PIN_9);
+          GPIO_InitTypeDef GPIO_InitStruct = {0};
+          GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
+          GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+          GPIO_InitStruct.Pull = GPIO_PULLUP;
+          GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+          GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
+          HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+          __HAL_I2C_ENABLE(hi2c);
+      }
+  } else if (hi2c->Instance == I2C2) {
+      if (now - last_recovery_time2 >= 1000) {
+          last_recovery_time2 = now;
+          __HAL_I2C_DISABLE(hi2c);
+          I2C_Bus_Recovery(GPIOB, GPIO_PIN_10, GPIO_PIN_11);
+          GPIO_InitTypeDef GPIO_InitStruct = {0};
+          GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_11;
+          GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+          GPIO_InitStruct.Pull = GPIO_PULLUP;
+          GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+          GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
+          HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+          __HAL_I2C_ENABLE(hi2c);
+      }
+  }
 }
 // Logging
 
@@ -550,8 +590,17 @@ extern void MX_I2C1_Init(void);
 extern void MX_I2C2_Init(void);
 
 void initMicroMouse(){
+  extern void raw_uart_print(const char *str);
+  raw_uart_print("initMicroMouse started...\r\n");
+
+  extern void Early_XSHUT_Init(void);
+  Early_XSHUT_Init();
+  raw_uart_print("Early_XSHUT_Init done.\r\n");
+
   MX_I2C1_Init();
+  raw_uart_print("MX_I2C1_Init done.\r\n");
   MX_I2C2_Init();
+  raw_uart_print("MX_I2C2_Init done.\r\n");
 
   TIM3->CCR4 = 0;
   TIM3->CCR3 = 0;
@@ -559,11 +608,16 @@ void initMicroMouse(){
   TIM4->CCR1 = 0;
 
   // Initialize display first to clear random power-up noise immediately
+  raw_uart_print("Initializing Screen...\r\n");
   initScreen();
+  raw_uart_print("Screen initialized.\r\n");
 
+  raw_uart_print("Initializing TOFs...\r\n");
   initTOFs(1);
+  raw_uart_print("TOFs initialized.\r\n");
 
   // Scan both I2C buses for devices
+  raw_uart_print("Scanning I2C...\r\n");
   uint8_t found1[1];
   uint8_t found2[5];
   uint8_t num1 = I2C_Scan(&hi2c1, found1, 1);
@@ -893,6 +947,54 @@ void MX_ADC1_Init(void)
 
 }
 
+void I2C_Bus_Recovery(GPIO_TypeDef* GPIOx, uint16_t SCL_Pin, uint16_t SDA_Pin) {
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+
+    // 1. Configure SCL as GPIO output open-drain, SDA as input
+    GPIO_InitStruct.Pin = SCL_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = SDA_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
+
+    // 2. If SDA is held low, toggle SCL up to 9 times
+    if (HAL_GPIO_ReadPin(GPIOx, SDA_Pin) == GPIO_PIN_RESET) {
+        for (int i = 0; i < 9; i++) {
+            // SCL Low
+            HAL_GPIO_WritePin(GPIOx, SCL_Pin, GPIO_PIN_RESET);
+            for (volatile int delay = 0; delay < 100; delay++); // small delay (~10us)
+            
+            // SCL High
+            HAL_GPIO_WritePin(GPIOx, SCL_Pin, GPIO_PIN_SET);
+            for (volatile int delay = 0; delay < 100; delay++);
+            
+            // Check if SDA released
+            if (HAL_GPIO_ReadPin(GPIOx, SDA_Pin) == GPIO_PIN_SET) {
+                break;
+            }
+        }
+
+        // Generate a STOP condition manually
+        GPIO_InitStruct.Pin = SDA_Pin;
+        GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+        HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
+
+        // Pull SDA Low
+        HAL_GPIO_WritePin(GPIOx, SDA_Pin, GPIO_PIN_RESET);
+        for (volatile int delay = 0; delay < 100; delay++);
+        
+        // Pull SDA High (Stop condition)
+        HAL_GPIO_WritePin(GPIOx, SDA_Pin, GPIO_PIN_SET);
+        for (volatile int delay = 0; delay < 100; delay++);
+    }
+}
+
 /**
   * @brief I2C1 Initialization Function
   * @param None
@@ -902,7 +1004,11 @@ void MX_I2C1_Init(void)
 {
 
   /* USER CODE BEGIN I2C1_Init 0 */
-
+  hi2c1.State = HAL_I2C_STATE_RESET;
+  HAL_I2C_DeInit(&hi2c1);
+  I2C_Bus_Recovery(GPIOB, GPIO_PIN_8, GPIO_PIN_9);
+  __HAL_RCC_I2C1_FORCE_RESET();
+  __HAL_RCC_I2C1_RELEASE_RESET();
   /* USER CODE END I2C1_Init 0 */
 
   /* USER CODE BEGIN I2C1_Init 1 */
@@ -950,7 +1056,11 @@ void MX_I2C2_Init(void)
 {
 
   /* USER CODE BEGIN I2C2_Init 0 */
-
+  hi2c2.State = HAL_I2C_STATE_RESET;
+  HAL_I2C_DeInit(&hi2c2);
+  I2C_Bus_Recovery(GPIOB, GPIO_PIN_10, GPIO_PIN_11);
+  __HAL_RCC_I2C2_FORCE_RESET();
+  __HAL_RCC_I2C2_RELEASE_RESET();
   /* USER CODE END I2C2_Init 0 */
 
   /* USER CODE BEGIN I2C2_Init 1 */

@@ -23,7 +23,11 @@
 #ifdef I2C_TIMEOUT
 #undef I2C_TIMEOUT
 #endif
-#define I2C_TIMEOUT 10 // I2C timeout in ms
+
+__attribute__((weak)) void raw_uart_print(const char *str) {
+    (void)str;
+}
+#define I2C_TIMEOUT 2 // I2C timeout in ms
 #define I2C_READ 1
 #define I2C_WRITE 0
 
@@ -483,6 +487,27 @@ void calibrateToF(VL53L0_t* TOF_result , uint16_t distance) {
 
 void getVL53L0(VL53L0_t* TOF_result){
   if (!TOF_result->initialized) { return; }
+
+  // Avoid spamming I2C timeout reads if a sensor is failing/disconnected (error back-off)
+  static uint32_t last_fail_time[9] = {0};
+  int idx = -1;
+  extern VL53L0_t TOF_sb_left_result, TOF_sb_front_left_result, TOF_sb_front_result, TOF_sb_front_right_result, TOF_sb_right_result;
+  extern VL53L0_t TOF_mb_back_result, TOF_mb_front_result, TOF_mb_front_left_result, TOF_mb_front_right_result;
+  if (TOF_result == &TOF_sb_left_result) idx = 0;
+  else if (TOF_result == &TOF_sb_front_left_result) idx = 1;
+  else if (TOF_result == &TOF_sb_front_result) idx = 2;
+  else if (TOF_result == &TOF_sb_front_right_result) idx = 3;
+  else if (TOF_result == &TOF_sb_right_result) idx = 4;
+  else if (TOF_result == &TOF_mb_back_result) idx = 5;
+  else if (TOF_result == &TOF_mb_front_result) idx = 6;
+  else if (TOF_result == &TOF_mb_front_left_result) idx = 7;
+  else if (TOF_result == &TOF_mb_front_right_result) idx = 8;
+
+  uint32_t now = HAL_GetTick();
+  if (idx >= 0 && last_fail_time[idx] > 0 && (now - last_fail_time[idx] < 100)) {
+      return; // Cool-down active: skip read to save tick execution budget
+  }
+
   VL53L0X_I2C_Handler = TOF_result->I2Cx;
   g_i2cAddr = TOF_result->Address;
 
@@ -493,6 +518,9 @@ void getVL53L0(VL53L0_t* TOF_result){
   if (i2cStat != HAL_OK) {
     TOF_result->Distance = 8190;
     TOF_result->Status = 255;
+    if (idx >= 0) {
+        last_fail_time[idx] = now;
+    }
     return;
   }
 
@@ -576,6 +604,54 @@ void refreshTOFValues() {
     TOF_Status[8] = TOF_mb_front_right_result.Status;
 }
 
+void Early_XSHUT_Init(void) {
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+
+  GPIO_InitStruct.Pin = XSHUT1_Pin;
+  HAL_GPIO_Init(XSHUT1_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(XSHUT1_GPIO_Port, XSHUT1_Pin, GPIO_PIN_SET);
+
+  GPIO_InitStruct.Pin = XSHUT2_Pin;
+  HAL_GPIO_Init(XSHUT2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(XSHUT2_GPIO_Port, XSHUT2_Pin, GPIO_PIN_SET);
+
+  GPIO_InitStruct.Pin = XSHUT3_Pin;
+  HAL_GPIO_Init(XSHUT3_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(XSHUT3_GPIO_Port, XSHUT3_Pin, GPIO_PIN_SET);
+
+  GPIO_InitStruct.Pin = XSHUT4_Pin;
+  HAL_GPIO_Init(XSHUT4_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(XSHUT4_GPIO_Port, XSHUT4_Pin, GPIO_PIN_SET);
+
+  GPIO_InitStruct.Pin = XSHUT5_Pin;
+  HAL_GPIO_Init(XSHUT5_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(XSHUT5_GPIO_Port, XSHUT5_Pin, GPIO_PIN_SET);
+
+  GPIO_InitStruct.Pin = XSHUT6_Pin;
+  HAL_GPIO_Init(XSHUT6_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(XSHUT6_GPIO_Port, XSHUT6_Pin, GPIO_PIN_SET);
+
+  GPIO_InitStruct.Pin = XSHUT7_Pin;
+  HAL_GPIO_Init(XSHUT7_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(XSHUT7_GPIO_Port, XSHUT7_Pin, GPIO_PIN_SET);
+
+  GPIO_InitStruct.Pin = XSHUT8_Pin;
+  HAL_GPIO_Init(XSHUT8_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(XSHUT8_GPIO_Port, XSHUT8_Pin, GPIO_PIN_SET);
+
+  GPIO_InitStruct.Pin = XSHUT9_Pin;
+  HAL_GPIO_Init(XSHUT9_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(XSHUT9_GPIO_Port, XSHUT9_Pin, GPIO_PIN_SET);
+}
+
 void initTOFs(uint16_t signalRate){
   extern void raw_uart_print(const char *str);
   raw_uart_print("initTOFs entered!\r\n");
@@ -593,49 +669,6 @@ void initTOFs(uint16_t signalRate){
   TOF_mb_front_result.Address = newToFAddress_MB_F;      TOF_mb_front_result.I2Cx = &hi2c2;         TOF_mb_front_result.XSHUT_Port = XSHUT7_GPIO_Port; TOF_mb_front_result.XSHUT_Pin = XSHUT7_Pin; TOF_mb_front_result.Distance = 8190;
   TOF_mb_front_left_result.Address = newToFAddress_MB_FL; TOF_mb_front_left_result.I2Cx = &hi2c2;   TOF_mb_front_left_result.XSHUT_Port = XSHUT8_GPIO_Port; TOF_mb_front_left_result.XSHUT_Pin = XSHUT8_Pin; TOF_mb_front_left_result.Distance = 8190;
   TOF_mb_front_right_result.Address = newToFAddress_MB_FR; TOF_mb_front_right_result.I2Cx = &hi2c2; TOF_mb_front_right_result.XSHUT_Port = XSHUT9_GPIO_Port; TOF_mb_front_right_result.XSHUT_Pin = XSHUT9_Pin; TOF_mb_front_right_result.Distance = 8190;
-
-  // Configure XSHUT GPIO pins before reset
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-
-  // Configure XSHUT1 on GPIOE
-  GPIO_InitStruct.Pin = XSHUT1_Pin;
-  HAL_GPIO_Init(XSHUT1_GPIO_Port, &GPIO_InitStruct);
-
-  // Configure XSHUT2 on GPIOE
-  GPIO_InitStruct.Pin = XSHUT2_Pin;
-  HAL_GPIO_Init(XSHUT2_GPIO_Port, &GPIO_InitStruct);
-
-  // Configure XSHUT3 on GPIOE
-  GPIO_InitStruct.Pin = XSHUT3_Pin;
-  HAL_GPIO_Init(XSHUT3_GPIO_Port, &GPIO_InitStruct);
-
-  // Configure XSHUT4 on GPIOE
-  GPIO_InitStruct.Pin = XSHUT4_Pin;
-  HAL_GPIO_Init(XSHUT4_GPIO_Port, &GPIO_InitStruct);
-
-  // Configure XSHUT5 on GPIOE
-  GPIO_InitStruct.Pin = XSHUT5_Pin;
-  HAL_GPIO_Init(XSHUT5_GPIO_Port, &GPIO_InitStruct);
-
-  // Configure XSHUT6 on GPIOC
-  GPIO_InitStruct.Pin = XSHUT6_Pin;
-  HAL_GPIO_Init(XSHUT6_GPIO_Port, &GPIO_InitStruct);
-
-  // Configure XSHUT7 on GPIOD
-  GPIO_InitStruct.Pin = XSHUT7_Pin;
-  HAL_GPIO_Init(XSHUT7_GPIO_Port, &GPIO_InitStruct);
-
-  // Configure XSHUT8 on GPIOA
-  GPIO_InitStruct.Pin = XSHUT8_Pin;
-  HAL_GPIO_Init(XSHUT8_GPIO_Port, &GPIO_InitStruct);
-
-  // Configure XSHUT9 on GPIOE
-  GPIO_InitStruct.Pin = XSHUT9_Pin;
-  HAL_GPIO_Init(XSHUT9_GPIO_Port, &GPIO_InitStruct);
 
   setTimeout(200);
 

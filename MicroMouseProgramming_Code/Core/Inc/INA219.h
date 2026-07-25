@@ -106,7 +106,7 @@ int INA219_GetDeltaTime_ms();
 uint16_t INA219_ReadBusVoltage(INA219_t *ina219);
 int16_t INA219_ReadCurrent(INA219_t *ina219);
 int16_t INA219_ReadCurrent_raw(INA219_t *ina219);
-uint16_t INA219_ReadShuntVolage(INA219_t *ina219);
+int16_t INA219_ReadShuntVolage(INA219_t *ina219);
 uint16_t INA219_ReadPower(INA219_t *ina219);
 uint8_t INA219_GetBatteryLife(INA219_t *ina219,float batteryMax, float batteryMin);
 float INA219_GetAVGMiliWatt(INA219_t *ina219);

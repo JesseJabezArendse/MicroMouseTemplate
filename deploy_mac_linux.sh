@@ -25,20 +25,7 @@ if [ -z "$BIN_FILE" ]; then
     exit 1
 fi
 
-# 2. Flash the binary safely
-echo "[2/3] Flashing $BIN_FILE..."
-if command -v st-flash &> /dev/null; then
-    echo "st-flash utility found. Programming via ST-Link programmer..."
-    st-flash write "$BIN_FILE" 0x08000000
-    if [ $? -eq 0 ]; then
-        echo "Success! The mouse will reboot momentarily."
-        exit 0
-    else
-        echo "Warning: st-flash failed. Falling back to mass storage method..."
-    fi
-fi
-
-# Fallback: Find the ST-Link Mass Storage Drive
+# Try the ST-Link Mass Storage Drive first (legacy copy method)
 echo "Searching for ST-Link Mass Storage Drive..."
 if [ "$(uname)" == "Darwin" ]; then
     STLINK=$(ls -d /Volumes/*STLINK* /Volumes/NOD* 2>/dev/null | head -n 1)
@@ -46,11 +33,25 @@ else
     STLINK=$(ls -d /media/*/*STLINK* /media/*/NOD* /run/media/*/*STLINK* /run/media/*/NOD* 2>/dev/null | head -n 1)
 fi
 
-if [ -z "$STLINK" ]; then
-    echo "Error: ST-Link programmer/drive not found. Is the mouse plugged in?"
-    exit 1
+if [ -n "$STLINK" ] && [ -d "$STLINK" ]; then
+    echo "ST-Link Mass Storage Drive found at $STLINK. Copying firmware..."
+    cat "$BIN_FILE" > "$STLINK/firmware.bin"
+    if [ $? -eq 0 ]; then
+        echo "Success! Firmware copied to drive. The mouse will reboot momentarily."
+        exit 0
+    fi
 fi
 
-# Using 'cat' bypasses the macOS filesystem metadata manager entirely!
-cat "$BIN_FILE" > "$STLINK/firmware.bin"
-echo "Success! The mouse will reboot momentarily."
+# Fallback: Revert to using the /dev utility method (st-flash tool)
+echo "ST-Link drive not found or write failed. Trying st-flash utility..."
+if command -v st-flash &> /dev/null; then
+    echo "st-flash utility found. Programming via ST-Link programmer..."
+    st-flash write "$BIN_FILE" 0x08000000
+    if [ $? -eq 0 ]; then
+        echo "Success! The mouse will reboot momentarily."
+        exit 0
+    fi
+fi
+
+echo "Error: Could not flash firmware via mass storage or st-flash. Is the mouse plugged in?"
+exit 1
