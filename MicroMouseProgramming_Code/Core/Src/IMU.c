@@ -259,19 +259,17 @@ static LSM6DS3_ACC_GYRO_FS_G_t currentGyroFS = LSM6DS3_ACC_GYRO_FS_G_245dps;
 // Sensor handle
 static void *sensor_handle = NULL;
 
-//====================================================================
-// LOW-LEVEL I2C FUNCTIONS
-//====================================================================
+#define IMU_I2C_TIMEOUT 2
 
 static uint8_t LSM6DS3_IO_Write(void *handle, uint8_t WriteAddr, uint8_t *pBuffer, uint16_t nBytesToWrite) {
     uint8_t dev_addr = (LSM6DS3_I2C_ADDRESS << 1);
-    HAL_StatusTypeDef status = HAL_I2C_Mem_Write(&hi2c2, dev_addr, WriteAddr, 1, pBuffer, nBytesToWrite, I2C_TIMEOUT);
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Write(&hi2c2, dev_addr, WriteAddr, 1, pBuffer, nBytesToWrite, IMU_I2C_TIMEOUT);
     return (status == HAL_OK) ? 0 : 1;
 }
 
 static uint8_t LSM6DS3_IO_Read(void *handle, uint8_t ReadAddr, uint8_t *pBuffer, uint16_t nBytesToRead) {
     uint8_t dev_addr = (LSM6DS3_I2C_ADDRESS << 1);
-    HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&hi2c2, dev_addr, ReadAddr, 1, pBuffer, nBytesToRead, I2C_TIMEOUT);
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&hi2c2, dev_addr, ReadAddr, 1, pBuffer, nBytesToRead, IMU_I2C_TIMEOUT);
     return (status == HAL_OK) ? 0 : 1;
 }
 
@@ -454,6 +452,14 @@ void initIMU(void) {
 
 void refreshIMUValues(void) {
     if (!imu_initialized) { return; }
+
+    // IMU failure back-off to prevent CPU starvation when the sensor is missing/glitching
+    static uint32_t last_fail_time = 0;
+    uint32_t now = HAL_GetTick();
+    if (last_fail_time > 0 && (now - last_fail_time < 100)) {
+        return; // Skip read: cool-down active
+    }
+
     LSM6DS3_Axes_t accelData, gyroData;
     float temp;
     
@@ -461,6 +467,9 @@ void refreshIMUValues(void) {
         IMU_Accel[0] = (accelData.x / 1000.0f) * IMU_GRAVITATIONAL_ACCELERATION;
         IMU_Accel[1] = (accelData.y / 1000.0f) * IMU_GRAVITATIONAL_ACCELERATION;
         IMU_Accel[2] = (accelData.z / 1000.0f) * IMU_GRAVITATIONAL_ACCELERATION;
+    } else {
+        last_fail_time = now;
+        return;
     }
     
     if (LSM6DS3_GetGyroscope(&gyroData) == MEMS_SUCCESS) {
@@ -471,10 +480,16 @@ void refreshIMUValues(void) {
         IMU_Gyro[0] = IMU_Gyro_DPS[0] * IMU_DPS2RAD;
         IMU_Gyro[1] = IMU_Gyro_DPS[1] * IMU_DPS2RAD;
         IMU_Gyro[2] = IMU_Gyro_DPS[2] * IMU_DPS2RAD;
+    } else {
+        last_fail_time = now;
+        return;
     }
     
     if (LSM6DS3_GetTemperature(&temp) == MEMS_SUCCESS) {
         IMU_Temp = temp;
+    } else {
+        last_fail_time = now;
+        return;
     }
     
     #ifdef IMU_DYNAMIC_FSR
