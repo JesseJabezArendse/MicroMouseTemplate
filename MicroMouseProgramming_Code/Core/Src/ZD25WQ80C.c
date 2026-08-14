@@ -48,9 +48,10 @@ static uint8_t read_status_reg1(void)
 static HAL_StatusTypeDef wait_for_ready(uint32_t timeout_ms)
 {
     uint32_t start = HAL_GetTick();
+    volatile uint32_t loop_count = 100000;
     while (read_status_reg1() & ZD25WQ80C_SR1_WIP)
     {
-        if ((HAL_GetTick() - start) >= timeout_ms)
+        if (--loop_count == 0 || (HAL_GetTick() - start) >= timeout_ms)
             return HAL_TIMEOUT;
     }
     return HAL_OK;

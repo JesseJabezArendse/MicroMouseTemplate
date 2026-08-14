@@ -125,7 +125,9 @@ uint8_t readReg(uint8_t reg) {
   uint8_t value;
 
   i2cStat = HAL_I2C_Mem_Read(VL53L0X_I2C_Handler, g_i2cAddr | I2C_READ, reg, 1, msgBuffer, 1, I2C_TIMEOUT);
-  
+  if (i2cStat != HAL_OK) {
+    restartI2C(VL53L0X_I2C_Handler);
+  }
   value = msgBuffer[0];
 
   return value;
@@ -136,6 +138,9 @@ uint16_t readReg16Bit(uint8_t reg) {
   uint16_t value;
 
   i2cStat = HAL_I2C_Mem_Read(VL53L0X_I2C_Handler, g_i2cAddr | I2C_READ, reg, 1, msgBuffer, 2, I2C_TIMEOUT);
+  if (i2cStat != HAL_OK) {
+    restartI2C(VL53L0X_I2C_Handler);
+  }
   memcpy(&value, msgBuffer, 2);
 
   return value;
@@ -145,6 +150,9 @@ uint16_t readReg16Bit(uint8_t reg) {
 uint32_t readReg32Bit(uint8_t reg) {
   uint32_t value;
   i2cStat = HAL_I2C_Mem_Read(VL53L0X_I2C_Handler, g_i2cAddr | I2C_READ, reg, 1, msgBuffer, 4, I2C_TIMEOUT);
+  if (i2cStat != HAL_OK) {
+    restartI2C(VL53L0X_I2C_Handler);
+  }
   memcpy(&value, msgBuffer, 4);
 
   return value;
@@ -1159,8 +1167,9 @@ uint16_t readRangeContinuousMillimeters( VL53L0_t *extraStats) {
   }
   #else
   startTimeout();
+  volatile uint32_t timeout_counter = 10000;
   while ((readReg(RESULT_INTERRUPT_STATUS) & 0x07) == 0) {
-    if (checkTimeoutExpired())
+    if (--timeout_counter == 0 || i2cStat != HAL_OK || checkTimeoutExpired())
     {
       g_isTimeout = true;
       return 65535;
@@ -1210,8 +1219,9 @@ uint16_t readRangeSingleMillimeters( VL53L0_t *extraStats ) {
   writeReg(SYSRANGE_START, 0x01);
   // "Wait until start bit has been cleared"
   startTimeout();
+  volatile uint32_t timeout_counter = 10000;
   while (readReg(SYSRANGE_START) & 0x01) {
-    if (checkTimeoutExpired()) {
+    if (--timeout_counter == 0 || i2cStat != HAL_OK || checkTimeoutExpired()) {
       g_isTimeout = true;
       return 65535;
     }
@@ -1259,9 +1269,10 @@ bool getSpadInfo(uint8_t * count, bool * type_is_aperture)
   writeReg(0x94, 0x6b);
   writeReg(0x83, 0x00);
   startTimeout();
+  volatile uint32_t timeout_counter = 10000;
   while (readReg(0x83) == 0x00)
   {
-    if (checkTimeoutExpired()) { return false; }
+    if (--timeout_counter == 0 || i2cStat != HAL_OK || checkTimeoutExpired()) { return false; }
   }
   writeReg(0x83, 0x01);
   tmp = readReg(0x92);
@@ -1390,9 +1401,10 @@ bool performSingleRefCalibration(uint8_t vhv_init_byte)
   writeReg(SYSRANGE_START, 0x01 | vhv_init_byte); // VL53L0X_REG_SYSRANGE_MODE_START_STOP
 
   startTimeout();
+  volatile uint32_t timeout_counter = 10000;
   while ((readReg(RESULT_INTERRUPT_STATUS) & 0x07) == 0)
   {
-    if (checkTimeoutExpired()) { return false; }
+    if (--timeout_counter == 0 || i2cStat != HAL_OK || checkTimeoutExpired()) { return false; }
   }
 
   writeReg(SYSTEM_INTERRUPT_CLEAR, 0x01);

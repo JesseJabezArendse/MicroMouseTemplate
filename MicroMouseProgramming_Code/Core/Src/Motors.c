@@ -86,7 +86,7 @@ void initMotors(void)
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
 
     // ── Enable TIM4 interrupts in NVIC for encoder tracking ──────────────
-    HAL_NVIC_SetPriority(TIM4_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(TIM4_IRQn, 14, 0);
     HAL_NVIC_EnableIRQ(TIM4_IRQn);
 
     // ── Start TIM4 input-capture ─────────────────────────────────────────
