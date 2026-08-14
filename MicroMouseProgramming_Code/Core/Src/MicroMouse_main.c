@@ -813,16 +813,16 @@ void MX_NVIC_Init(void)
 {
   /* FLASH_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(FLASH_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(FLASH_IRQn);
+  // HAL_NVIC_EnableIRQ(FLASH_IRQn);
   /* RCC_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(RCC_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(RCC_IRQn);
+  // HAL_NVIC_EnableIRQ(RCC_IRQn);
   /* DMA1_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  // HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
   /* ADC1_2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
+  // HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
   /* TIM4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM4_IRQn, 0, 0);
   // HAL_NVIC_EnableIRQ(TIM4_IRQn); // Disabled to prevent touch interrupt storms
@@ -831,10 +831,10 @@ void MX_NVIC_Init(void)
   // HAL_NVIC_EnableIRQ(TIM5_IRQn); // Disabled to prevent unused interrupt storms
   /* DMA2_Channel6_IRQn interrupt configuration */
   NVIC_SetPriority(DMA2_Channel6_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  NVIC_EnableIRQ(DMA2_Channel6_IRQn);
+  // NVIC_EnableIRQ(DMA2_Channel6_IRQn);
   /* DMA2_Channel7_IRQn interrupt configuration */
   NVIC_SetPriority(DMA2_Channel7_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  NVIC_EnableIRQ(DMA2_Channel7_IRQn);
+  // NVIC_EnableIRQ(DMA2_Channel7_IRQn);
   /* TIM7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
   // HAL_NVIC_EnableIRQ(TIM7_IRQn); // Disabled to prevent unused interrupt storms
