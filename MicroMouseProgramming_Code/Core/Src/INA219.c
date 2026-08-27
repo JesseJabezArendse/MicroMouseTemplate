@@ -387,9 +387,9 @@ void INA219_setCalibration_MaxRes(INA219_t *ina219)
 					  INA219_CONFIG_SADCRES_12BIT_128S_69MS |
 					  INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS;
 
-	ina219_calibrationValue = 8192; // For 50uA/bit, Rshunt = 0.1Ω (corrected from 0.05Ω)
-	ina219_CurrentDivider_mA = 20;   // 1000/50uA
-	ina219_PowerMultiplier_mW = 1;   // 1mW/bit
+	ina219_calibrationValue = 8192; // For 100uA/bit, Rshunt = 0.05Ω (50 mΩ)
+	ina219_CurrentDivider_mA = 10;   // 1000/100uA
+	ina219_PowerMultiplier_mW = 2;   // 2mW/bit
 
 	INA219_setCalibration(ina219, ina219_calibrationValue);
 	INA219_setConfig(ina219, config);
