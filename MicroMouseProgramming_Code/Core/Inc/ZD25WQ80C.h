@@ -20,7 +20,7 @@ extern SPI_HandleTypeDef hspi2;
 #define ZD25WQ80C_CS_PIN        (FLASH_CS_Pin)
 #define ZD25WQ80C_CS_PORT       (FLASH_CS_GPIO_Port)
 
-#define ZD25WQ80C_SPI_TIMEOUT   10
+#define ZD25WQ80C_SPI_TIMEOUT   1000
 
 /* JEDEC / Device ID */
 #define ZD25WQ80C_MANUFACTURER_ID   0xBA
