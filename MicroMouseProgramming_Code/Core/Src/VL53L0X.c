@@ -446,8 +446,8 @@ void initVL53L0(VL53L0_t *tof, uint16_t signalRate){
     return;
   }
 
-  // Configure standard timing budget (33ms) for fast and reliable continuous ranging
-  setMeasurementTimingBudget(33000);
+  // Configure high-speed 50Hz timing budget (20ms) for fast and responsive control loops
+  setMeasurementTimingBudget(20000);
   startContinuous(0);
   setAddress_VL53L0X(tof->Address);
   tof->initialized = 1;
@@ -483,6 +483,11 @@ void calibrateToF(VL53L0_t* TOF_result , uint16_t distance) {
 
 
 void getVL53L0(VL53L0_t* TOF_result){
+  if (!TOF_result->initialized) {
+    TOF_result->Distance = 8190;
+    TOF_result->Status = 255;
+    return;
+  }
   if (!TOF_result->initialized) { return; }
 
   // Avoid spamming I2C timeout reads if a sensor is failing/disconnected (error back-off)
@@ -1142,24 +1147,12 @@ void stopContinuous(void)
 uint16_t readRangeContinuousMillimeters( VL53L0_t *extraStats) {
   uint8_t tempBuffer[12];
   uint16_t temp;
-  #ifdef COMPILED_BY_SIMULINK
   if ((readReg(RESULT_INTERRUPT_STATUS) & 0x07) == 0) {
     if (extraStats != NULL) {
       extraStats->rangeStatus = 255; // Custom status indicating "not ready"
     }
     return 65535;
   }
-  #else
-  startTimeout();
-  volatile uint32_t timeout_counter = 10000;
-  while ((readReg(RESULT_INTERRUPT_STATUS) & 0x07) == 0) {
-    if (--timeout_counter == 0 || i2cStat != HAL_OK || checkTimeoutExpired())
-    {
-      g_isTimeout = true;
-      return 65535;
-    }
-  }
-  #endif
   if (extraStats == NULL) {
     // assumptions: Linearity Corrective Gain is 1000 (default);
     // fractional ranging is not enabled
