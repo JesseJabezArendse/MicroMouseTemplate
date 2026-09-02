@@ -531,14 +531,14 @@ void getVL53L0(VL53L0_t* TOF_result){
     return;
   }
 
-  // If the range is valid, update the TOF_result structure
-  if (distance > 20 && distance < 2000 && distanceStr.rangeStatus != 4) {
+  // Only accept verified valid target measurements (rangeStatus == 0 / RANGECOMPLETE)
+  if (distanceStr.rangeStatus == 0 && distance > 20 && distance < 2000) {
     TOF_result->Distance = distance;
     TOF_result->Status = distanceStr.rangeStatus;
     TOF_result->Ambient = distanceStr.Ambient;
     TOF_result->Signal = distanceStr.Signal;
   } else {
-    // Ranging failed/out of range (e.g. 0mm, <20mm, >=2000mm, phase fail / open air)
+    // Open air / no target / signal fail / phase fail -> strictly 8190
     TOF_result->Distance = 8190;
     TOF_result->Status = distanceStr.rangeStatus;
   }
@@ -1147,29 +1147,16 @@ void stopContinuous(void)
 uint16_t readRangeContinuousMillimeters( VL53L0_t *extraStats) {
   uint8_t tempBuffer[12];
   uint16_t temp;
-  if ((readReg(RESULT_INTERRUPT_STATUS) & 0x07) == 0) {
+  readMulti(0x14, tempBuffer, 12);
+  if (i2cStat != HAL_OK) {
     if (extraStats != NULL) {
-      extraStats->rangeStatus = 255; // Custom status indicating "not ready"
+      extraStats->rangeStatus = 255;
     }
     return 65535;
   }
   if (extraStats == NULL) {
-    // assumptions: Linearity Corrective Gain is 1000 (default);
-    // fractional ranging is not enabled
-    temp = readReg16Bit(RESULT_RANGE_STATUS + 10);
+    temp = (tempBuffer[0x0A]<<8) | tempBuffer[0x0B];
   } else {
-    // Register map starting at 0x14
-    //     0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
-    //    5A 06 BC 04 00 85 00 38 00 19 06 B6 00 00 00 00
-    //   0: Ranging status, uint8_t
-    //   1: ???
-    // 3,2: Effective SPAD return count, uint16_t, fixpoint8.8
-    //   4: 0 ?
-    //   5: ???
-    // 6,7: signal count rate [mcps], uint16_t, fixpoint9.7
-    // 9,8: AmbientRateRtnMegaCps  [mcps], uint16_t, fixpoimt9.7
-    // A,B: uncorrected distance [mm], uint16_t
-    readMulti(0x14, tempBuffer, 12);
     extraStats->rangeStatus =  tempBuffer[0x00]>>3;
     extraStats->spadCnt     = (tempBuffer[0x02]<<8) | tempBuffer[0x03];
     extraStats->Signal   = (tempBuffer[0x06]<<8) | tempBuffer[0x07];
