@@ -647,7 +647,7 @@ void initMicroMouse(){
   TIM4->CCR2 = 0;
   TIM4->CCR1 = 0;
 
-  initTOFs(1);
+  initTOFs(250);
 
   // Scan both I2C buses for devices
   uint8_t found1[1];

@@ -613,7 +613,7 @@ void initMicroMouse(){
   raw_uart_print("Screen initialized.\r\n");
 
   raw_uart_print("Initializing TOFs...\r\n");
-  initTOFs(1);
+  initTOFs(250);
   raw_uart_print("TOFs initialized.\r\n");
 
   // Scan both I2C buses for devices
