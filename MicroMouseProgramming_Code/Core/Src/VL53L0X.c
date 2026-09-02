@@ -531,14 +531,15 @@ void getVL53L0(VL53L0_t* TOF_result){
     return;
   }
 
-  // Only accept verified valid target measurements (rangeStatus == 0 / RANGECOMPLETE)
-  if (distanceStr.rangeStatus == 0 && distance > 20 && distance < 2000) {
+  // Signal check: In open air, ambient SPAD noise produces false ~30mm readings with Signal < 100 (0.78 MCPS).
+  // Real targets have strong laser return signals (Signal >= 100).
+  if (distanceStr.Signal >= 100 && distance > 20 && distance < 2000) {
     TOF_result->Distance = distance;
     TOF_result->Status = distanceStr.rangeStatus;
     TOF_result->Ambient = distanceStr.Ambient;
     TOF_result->Signal = distanceStr.Signal;
   } else {
-    // Open air / no target / signal fail / phase fail -> strictly 8190
+    // Open air / no target / signal fail -> strictly 8190
     TOF_result->Distance = 8190;
     TOF_result->Status = distanceStr.rangeStatus;
   }
@@ -1147,6 +1148,12 @@ void stopContinuous(void)
 uint16_t readRangeContinuousMillimeters( VL53L0_t *extraStats) {
   uint8_t tempBuffer[12];
   uint16_t temp;
+  if ((readReg(RESULT_INTERRUPT_STATUS) & 0x07) == 0) {
+    if (extraStats != NULL) {
+      extraStats->rangeStatus = 255;
+    }
+    return 65535;
+  }
   readMulti(0x14, tempBuffer, 12);
   if (i2cStat != HAL_OK) {
     if (extraStats != NULL) {
