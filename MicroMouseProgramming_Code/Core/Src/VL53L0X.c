@@ -446,10 +446,12 @@ void initVL53L0(VL53L0_t *tof, uint16_t signalRate){
     return;
   }
 
-  // Configure high-speed 50Hz timing budget (20ms) for fast and responsive control loops
+  // First assign the unique address to the sensor
+  setAddress_VL53L0X(tof->Address);
+
+  // Configure high-speed 50Hz timing budget (20ms) on the new address
   setMeasurementTimingBudget(20000);
   startContinuous(0);
-  setAddress_VL53L0X(tof->Address);
   tof->initialized = 1;
 
 }
