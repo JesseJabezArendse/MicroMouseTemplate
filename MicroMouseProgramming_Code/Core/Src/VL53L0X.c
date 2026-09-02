@@ -538,13 +538,13 @@ void getVL53L0(VL53L0_t* TOF_result){
   }
 
   // If the range is valid, update the TOF_result structure
-  if ((distanceStr.rangeStatus == RANGECOMPLETE || distanceStr.rangeStatus == NONE) && distance > 20 && distance < 8000) {
+  if (distance > 20 && distance < 2000 && distanceStr.rangeStatus != 4) {
     TOF_result->Distance = distance;
     TOF_result->Status = distanceStr.rangeStatus;
     TOF_result->Ambient = distanceStr.Ambient;
     TOF_result->Signal = distanceStr.Signal;
   } else {
-    // Ranging failed/timed out/out of range (e.g. 0mm, <20mm, >=8000mm, open air)
+    // Ranging failed/out of range (e.g. 0mm, <20mm, >=2000mm, phase fail / open air)
     TOF_result->Distance = 8190;
     TOF_result->Status = distanceStr.rangeStatus;
   }
