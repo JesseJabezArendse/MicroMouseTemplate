@@ -1691,6 +1691,17 @@ void MX_GPIO_Init(void)
   */
 void MX_SPI2_Init(void)
 {
+  __HAL_RCC_SPI2_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  GPIO_InitStruct.Pin = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   hspi2.Instance               = SPI2;
   hspi2.Init.Mode              = SPI_MODE_MASTER;
   hspi2.Init.Direction         = SPI_DIRECTION_2LINES;
