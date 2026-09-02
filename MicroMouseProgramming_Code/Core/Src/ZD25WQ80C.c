@@ -81,12 +81,12 @@ uint8_t initZD25WQ80C(void)
     cs_deassert();
 
     /* Release from deep power-down in case the device was left powered but
-       sleeping from a previous session. The RDP command issues a dummy byte
-       sequence; tRES1 = 3 µs so a HAL_Delay(1) is sufficient. */
+       sleeping from a previous session. The RDP command issues 0xAB;
+       tRES1 = 3 µs so a 100 µs busy loop is sufficient. */
     ZD25WQ80C_WakeUp();
-    HAL_Delay(1);
+    for (volatile int i = 0; i < 20000; i++) __NOP();
 
-    uint8_t mfr, id_h, id_l;
+    uint8_t mfr = 0, id_h = 0, id_l = 0;
     if (!ZD25WQ80C_ReadJEDECID(&mfr, &id_h, &id_l))
         return 0;
 
@@ -176,10 +176,11 @@ void ZD25WQ80C_DeepPowerDown(void)
  */
 void ZD25WQ80C_WakeUp(void)
 {
-    uint8_t buf[4] = {ZD25WQ80C_CMD_RDP, 0xFF, 0xFF, 0xFF};
+    uint8_t cmd = ZD25WQ80C_CMD_RDP;
     cs_assert();
-    HAL_SPI_Transmit(flash.spi, buf, 4, ZD25WQ80C_SPI_TIMEOUT);
+    HAL_SPI_Transmit(flash.spi, &cmd, 1, ZD25WQ80C_SPI_TIMEOUT);
     cs_deassert();
+    for (volatile int i = 0; i < 20000; i++) __NOP();
 }
 
 /**
