@@ -446,19 +446,8 @@ void initVL53L0(VL53L0_t *tof, uint16_t signalRate){
     return;
   }
 
-  uint8_t PreRange = 18;
-  uint8_t FinalRange = 14;
-
-	// Configure the sensor for high accuracy and speed in 20 cm.
-	if (!setSignalRateLimit(signalRate)) { restartI2C(tof->I2Cx); } // Updated to use uint16_t signalRate
-  if (!setVcselPulsePeriod(VcselPeriodPreRange, PreRange)) { restartI2C(tof->I2Cx); }
-  if (!setVcselPulsePeriod(VcselPeriodFinalRange, FinalRange)) { restartI2C(tof->I2Cx); }
-  // Set timing budget to 100ms (10Hz) to ensure reliable measurements under the long-range profile (PreRange=18, FinalRange=14), falling back to 200ms (5Hz) if needed.
-  if (!setMeasurementTimingBudget(100000)) {
-    if (!setMeasurementTimingBudget(200000)) {
-      restartI2C(tof->I2Cx);
-    }
-  }
+  // Configure standard timing budget (33ms) for fast and reliable continuous ranging
+  setMeasurementTimingBudget(33000);
   startContinuous(0);
   setAddress_VL53L0X(tof->Address);
   tof->initialized = 1;
